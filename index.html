@@ -439,7 +439,7 @@
 
 
         // --- Versión de la App ---
-        const APP_VERSION = '1.28'; // Allow multiple placements of same model
+        const APP_VERSION = '1.29'; // Added Firebase Logging
 
         // LocalStorage Key
         const LOCALSTORAGE_KEY = 'arAdminModelSelection';
@@ -617,8 +617,8 @@
 
         // --- Firebase Logic ---
         async function initializeFirebase() { 
-            // ... (no changes) ...
-            console.log("Initializing Firebase with provided config..."); 
+            // ADDED LOGGING
+            console.log("Initializing Firebase..."); 
             if (loadingPois) loadingPois.textContent = "Inicializando conexión Firebase...";
             if (gotoMapButton) gotoMapButton.disabled = true; 
 
@@ -631,7 +631,7 @@
             }
             
             try {
-                 console.log("Calling initializeApp with manual config...");
+                 console.log("Calling initializeApp...");
                  const app = initializeApp(firebaseConfig); 
                  console.log("Firebase App initialized.");
                  db = getFirestore(app);
@@ -639,11 +639,12 @@
                  console.log("Firestore and Auth services obtained.");
                  setLogLevel('Debug'); 
                 
+                 console.log("Setting up Auth State Listener..."); // ADDED
                  onAuthStateChanged(auth, async (user) => {
-                     console.log("Auth state changed. User:", user ? user.uid : 'null');
+                     console.log("Auth state changed callback triggered."); // ADDED
                      if (user) {
                          userId = user.uid;
-                         console.log('Firebase User Authenticated:', userId);
+                         console.log('Firebase User Authenticated. UID:', userId); // MODIFIED
                          
                          const currentAppId = (appId === 'default-app-id' && firebaseConfig.appId) ? firebaseConfig.appId : appId;
                          const collectionPath = `/artifacts/${currentAppId}/public/data/pois`;
@@ -651,21 +652,29 @@
                          console.log('POI Collection configured:', collectionPath);
                         
                          firebaseReady = true; 
+                         console.log('Firebase is Ready. Enabling GoToMap button...'); // ADDED
                          if (gotoMapButton) {
                              gotoMapButton.disabled = false; 
-                             console.log("GoToMap button enabled.");
+                             console.log("GoToMap button ENABLED."); // MODIFIED
+                         } else {
+                             console.warn("GoToMap button not found when trying to enable."); // ADDED
                          }
                          if (loadingPois && (loadingPois.textContent.startsWith("Conectando") || loadingPois.textContent.startsWith("Inicializando"))) { 
                              loadingPois.textContent = "Conexión exitosa. Cargando POIs..."; 
                          }
                          showMessage("Conectado a la base de datos.", 2000); 
                         
+                         console.log('Calling loadAndListenPois...'); // ADDED
                          loadAndListenPois(); 
                      } else {
                          userId = null;
                          poiCollectionRef = null;
                          firebaseReady = false; 
-                         if (gotoMapButton) gotoMapButton.disabled = true; 
+                         console.log('Firebase User signed out or not authenticated.'); // ADDED
+                         if (gotoMapButton) {
+                            gotoMapButton.disabled = true; 
+                            console.log('GoToMap button DISABLED (no user).'); // ADDED
+                         }
                          if (listContainer) listContainer.innerHTML = '<p class="text-red-500 font-semibold">Error: Autenticación fallida o cerrada.</p>';
                          allPoisData = []; 
                          poiDataMap.clear(); 
@@ -675,23 +684,29 @@
                  });
                  console.log("Auth state listener attached.");
 
+                 // Attempt Sign In
+                 console.log("Attempting sign in..."); // ADDED
                  try {
                      if (initialAuthToken) {
                          console.log("Attempting sign in with custom token...");
                          await signInWithCustomToken(auth, initialAuthToken);
-                         console.log("Signed in with custom token.");
+                         console.log("Signed in with custom token SUCCESS."); // MODIFIED
                      } else {
                          console.log("Attempting anonymous sign in...");
                          await signInAnonymously(auth);
-                         console.log("Signed in anonymously.");
+                         console.log("Signed in anonymously SUCCESS."); // MODIFIED
                      }
                  } catch (authError) {
-                     console.error("Auth Error:", authError);
+                     // Log specific errors
+                     console.error("Firebase Auth Error during sign-in:", authError.code, authError.message); // MODIFIED
                      firebaseReady = false;
-                     if (gotoMapButton) gotoMapButton.disabled = true;
+                     if (gotoMapButton) {
+                         gotoMapButton.disabled = true;
+                         console.log('GoToMap button DISABLED (auth error).'); // ADDED
+                     }
                      let detailedErrorMsg = `Error de Autenticación: ${authError.code || authError.message}`;
                      if (authError.code === 'auth/admin-restricted-operation' || authError.code === 'auth/operation-not-allowed') {
-                         detailedErrorMsg += " (SOLUCIÓN: Habilita 'Anónimo' y añade tu dominio a 'Dominios autorizados' en Firebase Auth > Settings)";
+                         detailedErrorMsg += " (VERIFICA: Inicio Anónimo habilitado Y dominio autorizado en Firebase Auth -> Settings)"; // MODIFIED
                      } else if (authError.message.includes("network")) {
                          detailedErrorMsg += " (Problema de red)";
                      }
@@ -700,9 +715,12 @@
                  }
 
             } catch (initError) {
-                 console.error("Firebase Init Error:", initError);
+                 console.error("Firebase Initialization Error:", initError); // MODIFIED
                  firebaseReady = false; 
-                 if (gotoMapButton) gotoMapButton.disabled = true;
+                 if (gotoMapButton) {
+                     gotoMapButton.disabled = true;
+                      console.log('GoToMap button DISABLED (init error).'); // ADDED
+                 }
                  const errorMsg = `Error fatal al inicializar Firebase: ${initError.message}. Verifica la config y la conexión.`;
                  if(loadingPois) loadingPois.textContent = errorMsg;
                  showMessage(errorMsg, 10000); 
@@ -1162,7 +1180,7 @@
          }
 
         function populatePlacementPanel() {
-             // MODIFIED: No longer filters based on allPoisData
+             // ... (no changes, still shows all selected models) ...
              if (!firebaseReady || !poiCollectionRef || !modelsToPlaceList) { 
                  console.warn("Cannot populate placement panel: Firebase not ready or DOM elements missing.");
                  if (modelsToPlaceList) modelsToPlaceList.innerHTML = '<p class="text-sm text-gray-500">Esperando conexión a base de datos...</p>';
@@ -1366,18 +1384,9 @@
                 
                  showMessage(`'${newPoi.name}' guardado exitosamente!`, 3000); 
 
-                 // --- DO NOT Remove from 'modelsToPlace' state ---
-                 // const placedUrl = currentPlacingModel.url;
-                 // modelsToPlace = modelsToPlace.filter(item => item.url !== placedUrl);
-                 // saveSelectionToLocalStorage(); // Don't save here, model remains selected
-                 // console.log("Item NOT removed from modelsToPlace state. Remaining:", modelsToPlace);
-
+                 // --- DO NOT Remove from 'modelsToPlace' state or localStorage here ---
+                 
                  // --- DO NOT Uncheck checkbox ---
-                 // let checkboxSelector = currentPlacingModel.isCustomVideo 
-                 //     ? '#select-video-cb' 
-                 //     : `.model-select-cb[data-url="${placedUrl}"]`;
-                 // const checkbox = document.querySelector(checkboxSelector);
-                 // if (checkbox) checkbox.checked = false; // Keep it checked
                  
                  // Reset placement state and show the list again
                  cancelPlacement(); 
@@ -1600,9 +1609,11 @@
              }
              console.log("Form and List listeners attached.");
              
+             // --- Llamar a initializeFirebase DESPUÉS de que el DOM esté listo ---
              initializeFirebase(); 
          });
 
     </script>
 </body>
 </html>
+
