@@ -2,92 +2,216 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin AR - Centro Comercial</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Panel de Administración AR (Geolocalización)</title>
+    <!-- Favicon -->
+    <link rel="icon" href="https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/favicon3dAR.ico">
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- A-Frame y AR.js -->
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    
+    <!-- Leaflet.js -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; font-family: 'Inter', sans-serif;
+        }
+        .page {
+            display: none; height: 100%; width: 100%;
+            position: relative; overflow-y: auto;
+        }
+        .page.active { display: block; }
+        .loader {
+            border: 4px solid #f3f3f3; border-top: 4px solid #3498db;
+            border-radius: 50%; width: 40px; height: 40px;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .control-button {
+            background-color: #4CAF50; color: white; padding: 10px 20px;
+            border: none; border-radius: 8px; font-size: 16px;
+            cursor: pointer; transition: background-color 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .control-button:hover { background-color: #45a049; }
+        
+        #message-box {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7); color: white;
+            padding: 10px 20px; border-radius: 8px; font-size: 1rem;
+            z-index: 10001; opacity: 0; transition: opacity 0.5s ease-in-out;
+            pointer-events: none;
+        }
+        #message-box.show { opacity: 1; }
+        
+        /* Estilos de Mapa y AR (adaptados) */
+        #map-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        #map-canvas { width: 100%; height: 100%; z-index: 1; }
+        #map-controls { position: fixed; top: 20px; right: 20px; z-index: 402; display: flex; flex-direction: column; gap: 10px; }
+        #coords-jumpto { position: fixed; top: 20px; left: 20px; z-index: 402; background-color: rgba(255, 255, 255, 0.9); padding: 10px; border-radius: 8px; display: flex; gap: 5px; align-items: center; }
+        
+        a-scene { position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; z-index: 1 !important; }
+        .arjs-loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); color: white; display: none; flex-direction: column; justify-content: center; align-items: center; font-size: 1.5rem; z-index: 10000; text-align: center; }
+        .permission-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); display: none; justify-content: center; align-items: center; z-index: 10001; }
+        .permission-content { background-color: white; padding: 20px; border-radius: 10px; max-width: 80%; text-align: center; }
+        .permission-button { background-color: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 15px; }
+        
+        #ar-controls { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 10px; }
+        .ar-info-panel { position: fixed; top: 20px; left: 20px; background-color: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 8px; font-size: 14px; z-index: 9998; }
+        .ar-loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #1a2a6c, #2a5298); color: white; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 10002; }
+        .ar-loading-screen.active { display: flex; }
+        
+        /* Correcciones de Video y Canvas AR */
+        video, .arjs-video {
+            position: fixed !important; top: 0 !important; left: 0 !important;
+            width: 100% !important; height: 100% !important; object-fit: cover !important;
+            z-index: -1 !important; display: block !important; opacity: 1 !important;
+            visibility: visible !important; autoplay: true !important;
+            playsinline: true !important; webkit-playsinline: true !important;
+            muted: true !important;
+        }
+        canvas, .a-canvas {
+            background: transparent !important; background-color: rgba(0, 0, 0, 0) !important;
+            z-index: 1 !important; position: fixed !important; top: 0 !important;
+            left: 0 !important; width: 100% !important; height: 100% !important;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-    <div class="container mx-auto p-6 max-w-4xl">
-        <h1 class="text-3xl font-bold text-center text-blue-700 mb-8">Panel de Administración AR</h1>
-
-        <!-- Formulario para agregar nuevos Puntos de Interés (POI) -->
-        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-            <h2 class="text-2xl font-semibold mb-4">Agregar Nuevo Punto de Interés</h2>
-            <form id="poi-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
+    <!-- PÁGINA 1: Panel de Administración (fusionada desde upload-page) -->
+    <div id="admin-page" class="page active">
+        <div class="container mx-auto p-6 max-w-4xl">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold text-blue-700">Panel de Administración AR</h1>
                 <div>
-                    <label for="poi-name" class="block text-sm font-medium text-gray-700">Nombre del POI</label>
-                    <input type="text" id="poi-name" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="Ej: Santa en Trineo">
+                    <button id="goto-map-btn" class="control-button bg-indigo-500 hover:bg-indigo-600">Ver Mapa</button>
+                    <button id="goto-ar-btn" class="control-button bg-green-500 hover:bg-green-600">Probar AR</button>
                 </div>
+            </div>
 
-                <div>
-                    <label for="model-quick-select" class="block text-sm font-medium text-gray-700">Selección Rápida (ECOPIENSA)</label>
-                    <select id="model-quick-select" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                        <option value="">-- Opcional: Seleccionar modelo --</option>
-                        <!-- Opciones se agregarán con JS -->
-                    </select>
-                </div>
+            <!-- Formulario para agregar nuevos Puntos de Interés (POI) -->
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Agregar Nuevo Punto de Interés</h2>
+                <form id="poi-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="poi-name" class="block text-sm font-medium text-gray-700">Nombre del POI</label>
+                        <input type="text" id="poi-name" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="Ej: Santa en Trineo">
+                    </div>
+                    <div>
+                        <label for="model-quick-select" class="block text-sm font-medium text-gray-700">Selección Rápida (ECOPIENSA)</label>
+                        <select id="model-quick-select" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                            <option value="">-- Opcional: Seleccionar modelo --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="poi-model-url" class="block text-sm font-medium text-gray-700">URL del Modelo (.glb)</label>
+                        <input type="url" id="poi-model-url" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="https://.../modelo.glb">
+                    </div>
+                    <div>
+                        <label for="poi-sound-url" class="block text-sm font-medium text-gray-700">URL de Sonido (Opcional, .mp3)</label>
+                        <input type="url" id="poi-sound-url" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="https://.../jinglebells.mp3">
+                    </div>
+                    <div>
+                        <label for="poi-lat" class="block text-sm font-medium text-gray-700">Latitud</label>
+                        <input type="number" step="any" id="poi-lat" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="4.0950">
+                    </div>
+                    <div>
+                        <label for="poi-lon" class="block text-sm font-medium text-gray-700">Longitud</label>
+                        <input type="number" step="any" id="poi-lon" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="-76.1950">
+                    </div>
+                    <div>
+                        <label for="poi-scale" class="block text-sm font-medium text-gray-700">Escala (Número)</label>
+                        <input type="number" step="0.1" id="poi-scale" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" value="1.0">
+                    </div>
+                     <div>
+                        <label for="poi-ground-height" class="block text-sm font-medium text-gray-700">Altura sobre terreno (m)</label>
+                        <input type="number" step="0.1" id="poi-ground-height" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" value="0.0">
+                    </div>
+                    <div>
+                        <label for="poi-start-date" class="block text-sm font-medium text-gray-700">Fecha de Inicio (Activación)</label>
+                        <input type="date" id="poi-start-date" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="poi-end-date" class="block text-sm font-medium text-gray-700">Fecha de Fin (Desactivación)</label>
+                        <input type="date" id="poi-end-date" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div class="md:col-span-2 text-center">
+                        <button type="submit" id="submit-btn" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300">
+                            Guardar Punto de Interés
+                        </button>
+                    </div>
+                </form>
+            </div>
 
-                <div>
-                    <label for="poi-model-url" class="block text-sm font-medium text-gray-700">URL del Modelo (.glb) (o rellenar arriba)</label>
-                    <input type="url" id="poi-model-url" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="https://.../modelo.glb">
+            <!-- Lista de POIs existentes -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold mb-4">Puntos de Interés Guardados</h2>
+                <div id="poi-list-container" class="space-y-4">
+                    <p id="loading-pois" class="text-gray-500">Cargando puntos...</p>
+                    <!-- Los POIs se insertarán aquí dinámicamente -->
                 </div>
-
-                <div>
-                    <label for="poi-lat" class="block text-sm font-medium text-gray-700">Latitud</label>
-                    <input type="number" step="any" id="poi-lat" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="4.0950">
-                </div>
-
-                <div>
-                    <label for="poi-lon" class="block text-sm font-medium text-gray-700">Longitud</label>
-                    <input type="number" step="any" id="poi-lon" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="-76.1950">
-                </div>
-
-                <div>
-                    <label for="poi-scale" class="block text-sm font-medium text-gray-700">Escala (Número)</label>
-                    <input type="number" step="0.1" id="poi-scale" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" value="1.0">
-                </div>
-
-                <div>
-                    <label for="poi-sound-url" class="block text-sm font-medium text-gray-700">URL de Sonido (Opcional, .mp3)</label>
-                    <input type="url" id="poi-sound-url" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="https://.../jinglebells.mp3">
-                </div>
-
-                <div>
-                    <label for="poi-start-date" class="block text-sm font-medium text-gray-700">Fecha de Inicio (Activación)</label>
-                    <input type="date" id="poi-start-date" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                </div>
-
-                <div>
-                    <label for="poi-end-date" class="block text-sm font-medium text-gray-700">Fecha de Fin (Desactivación)</label>
-                    <input type="date" id="poi-end-date" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                </div>
-
-                <div class="md:col-span-2 text-center">
-                    <button type="submit" id="submit-btn" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300">
-                        Guardar Punto de Interés
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
+    </div>
+    
+    <!-- PÁGINA 2: Vista de Mapa -->
+    <div id="map-page" class="page">
+        <div id="map-container">
+            <div id="map-canvas"></div>
+        </div>
+        <div id="coords-jumpto">
+            <input type="number" id="jumpto-lat" placeholder="Latitud" class="w-24 p-1 border rounded text-sm">
+            <input type="number" id="jumpto-lon" placeholder="Longitud" class="w-24 p-1 border rounded text-sm">
+            <button id="jumpto-btn" class="control-button bg-blue-500 hover:bg-blue-600 p-2 text-sm">Ir</button>
+        </div>
+        <div id="map-controls">
+            <button id="back-to-admin-btn" class="control-button bg-gray-500 hover:bg-gray-600">Volver al Panel</button>
+            <button id="goto-ar-from-map-btn" class="control-button bg-green-500 hover:bg-green-600">Probar AR</button>
+        </div>
+    </div>
 
-        <!-- Lista de POIs existentes -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold mb-4">Puntos de Interés Activos</h2>
-            <div id="poi-list-container" class="space-y-4">
-                <p id="loading-pois" class="text-gray-500">Cargando puntos...</p>
-                <!-- Los POIs se insertarán aquí dinámicamente -->
+    <!-- PÁGINA 3: Vista de Realidad Aumentada -->
+    <div id="ar-page" class="page">
+        <!-- Pantalla de carga interactiva para AR -->
+        <div id="ar-loading-screen" class="ar-loading-screen active">
+            <div class="loading-content">
+                <div class="loader"></div>
+                <div id="loading-status-text" class="text-xl">Preparando componentes...</div>
             </div>
         </div>
 
+        <div id="ar-scene-container"></div>
+        
+        <div class="ar-info-panel">
+            <div><strong>GPS:</strong> <span id="gps-status">Buscando...</span></div>
+            <div><strong>Precisión:</strong> <span id="gps-accuracy" style="font-weight: bold;">--</span>m</div>
+        </div>
+        <div id="ar-controls">
+            <button id="back-to-admin-from-ar-btn" class="control-button bg-gray-500 hover:bg-gray-600">Volver</button>
+        </div>
     </div>
+
+    <!-- Modal para solicitar permisos -->
+    <div id="permission-modal" class="permission-modal">
+        <div class="permission-content">
+            <h2>Permisos necesarios</h2>
+            <p>Esta aplicación necesita acceso a tu cámara y ubicación para la experiencia de Realidad Aumentada.</p>
+            <button id="grant-permissions-btn" class="permission-button">Conceder Permisos</button>
+        </div>
+    </div>
+
+    <div id="message-box"></div>
 
     <!-- Firebase SDK -->
     <script type="module">
+        // Importaciones de Three.js (no necesarias aquí, A-Frame las maneja)
+        
         // Importa las funciones necesarias de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -98,9 +222,11 @@
             doc, 
             deleteDoc, 
             onSnapshot, 
+            getDocs,
             query,
             setLogLevel 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
 
         // --- Modelos de ECOPIENSA ---
         const GITHUB_BASE_URL = 'https://raw.githubusercontent.com/instructorandradedcc/7777ar/main/asetss/modelss/';
@@ -114,52 +240,82 @@
         ];
 
         // --- Configuración de Firebase ---
-        // Estas variables __app_id, __firebase_config, y __initial_auth_token
-        // son proporcionadas automáticamente por el entorno de Canvas.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let db, auth, userId, poiCollectionRef;
+        let map;
+        let poiMarkers = []; // Almacenará los marcadores del mapa
 
-        // Elementos del DOM
+        // Variables para el control de la escena AR
+        let arScene = null;
+        let gpsWatchId = null;
+
+        const pages = {
+            admin: document.getElementById('admin-page'),
+            map: document.getElementById('map-page'),
+            ar: document.getElementById('ar-page')
+        };
+        const messageBox = document.getElementById('message-box');
+        const permissionModal = document.getElementById('permission-modal');
+        const arLoadingScreen = document.getElementById('ar-loading-screen');
+        const loadingStatusText = document.getElementById('loading-status-text');
+        
+        // Elementos del DOM (Panel Admin)
         const form = document.getElementById('poi-form');
         const submitBtn = document.getElementById('submit-btn');
         const listContainer = document.getElementById('poi-list-container');
         const loadingPois = document.getElementById('loading-pois');
         const quickSelect = document.getElementById('model-quick-select');
 
-        // Función principal de inicialización
-        async function initializeAdmin() {
-            try {
-                // Habilitar logs detallados de Firestore
-                setLogLevel('Debug');
+        function showMessage(msg, duration = 3000) {
+            messageBox.textContent = msg;
+            messageBox.classList.add('show');
+            setTimeout(() => messageBox.classList.remove('show'), duration);
+        }
 
-                // 1. Inicializar Firebase
+        function navigateTo(pageName) {
+            Object.values(pages).forEach(p => p.classList.remove('active'));
+            if(pages[pageName]) {
+                pages[pageName].classList.add('active');
+            }
+
+            if (pageName === 'map') {
+                setTimeout(initMap, 100); // Inicia el mapa
+            } else if (pageName === 'ar') {
+                startARFlow(); // Inicia el flujo de AR
+            } else {
+                // Si volvemos al admin, detenemos AR y mapa
+                stopAR();
+                if (map) {
+                    map.remove();
+                    map = null;
+                }
+            }
+        }
+
+        // --- Lógica de Firebase (Panel Admin) ---
+        async function initializeApp() {
+            try {
+                setLogLevel('Debug');
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                // 2. Autenticar al usuario
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
                         console.log('Usuario autenticado:', userId);
-                        // 3. Definir la ruta de la colección (pública)
-                        // Todos los usuarios (admin y viewers) usarán esta ruta.
                         const collectionPath = `/artifacts/${appId}/public/data/pois`;
                         poiCollectionRef = collection(db, collectionPath);
                         console.log('Escuchando en la colección:', collectionPath);
 
-                        // 4. Poblar el selector rápido de modelos
                         populateQuickSelect();
-
-                        // 5. Cargar y escuchar los POIs existentes
-                        loadAndListenPois();
+                        loadAndListenPois(); // Carga la lista de POIs en el panel
                     }
                 });
 
-                // Iniciar sesión (anónimamente si no hay token)
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
@@ -172,7 +328,6 @@
             }
         }
 
-        // Poblar el menú de selección rápida
         function populateQuickSelect() {
             if (!quickSelect) return;
             ECOPIENSA_MODELS.forEach(model => {
@@ -188,11 +343,13 @@
                     const selectedName = e.target.options[e.target.selectedIndex].text;
                     document.getElementById('poi-model-url').value = selectedUrl;
                     document.getElementById('poi-name').value = selectedName;
+                } else {
+                    document.getElementById('poi-model-url').value = '';
+                    document.getElementById('poi-name').value = '';
                 }
             });
         }
 
-        // Cargar POIs y escuchar cambios en tiempo real
         function loadAndListenPois() {
             const q = query(poiCollectionRef);
             
@@ -237,11 +394,10 @@
             });
         }
 
-        // Manejar el envío del formulario para agregar un POI
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!poiCollectionRef) {
-                alert("La base de datos no está lista. Intenta de nuevo.");
+                showMessage("La base de datos no está lista. Intenta de nuevo.", 5000);
                 return;
             }
 
@@ -256,61 +412,274 @@
                     lat: parseFloat(document.getElementById('poi-lat').value),
                     lon: parseFloat(document.getElementById('poi-lon').value),
                     scale: parseFloat(document.getElementById('poi-scale').value),
+                    groundHeight: parseFloat(document.getElementById('poi-ground-height').value),
                     startDate: document.getElementById('poi-start-date').value,
                     endDate: document.getElementById('poi-end-date').value
                 };
 
                 // Validar datos
-                if (isNaN(newPoi.lat) || isNaN(newPoi.lon) || isNaN(newPoi.scale)) {
-                    throw new Error("Latitud, Longitud y Escala deben ser números válidos.");
+                if (isNaN(newPoi.lat) || isNaN(newPoi.lon) || isNaN(newPoi.scale) || isNaN(newPoi.groundHeight)) {
+                    throw new Error("Latitud, Longitud, Escala y Altura deben ser números válidos.");
                 }
                 if (!newPoi.startDate || !newPoi.endDate) {
                     throw new Error("Las fechas de inicio y fin son obligatorias.");
                 }
 
-                // Agregar el documento a Firestore
-                const docRef = await addDoc(poiCollectionRef, newPoi);
-                console.log("Documento agregado con ID: ", docRef.id);
-                
-                form.reset(); // Limpiar el formulario
+                await addDoc(poiCollectionRef, newPoi);
+                showMessage('¡Punto de interés guardado!', 3000);
+                form.reset(); 
 
             } catch (error) {
                 console.error("Error al agregar documento: ", error);
-                alert("Error al guardar: " + error.message);
+                showMessage("Error al guardar: " + error.message, 5000);
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Guardar Punto de Interés';
             }
         });
 
-        // Manejar clics en los botones de eliminar (delegación de eventos)
         listContainer.addEventListener('click', async (e) => {
             if (e.target && e.target.classList.contains('delete-btn')) {
                 const docId = e.target.getAttribute('data-id');
                 
                 // Usar un modal personalizado en lugar de confirm()
-                if (window.confirm("¿Estás seguro de que quieres eliminar este punto de interés?")) {
+                if (confirm("¿Estás seguro de que quieres eliminar este punto de interés?")) {
                     try {
                         e.target.disabled = true;
                         e.target.textContent = 'Eliminando...';
                         const docRef = doc(db, poiCollectionRef.path, docId);
                         await deleteDoc(docRef);
-                        console.log("Documento eliminado:", docId);
+                        showMessage('Punto de interés eliminado.', 3000);
                     } catch (error) {
                         console.error("Error al eliminar documento: ", error);
-                        alert("No se pudo eliminar el documento.");
+                        showMessage("No se pudo eliminar el documento.", 5000);
                         e.target.disabled = false;
                         e.target.textContent = 'Eliminar';
                     }
                 }
             }
         });
+        
+        // --- Lógica del Mapa ---
+        function initMap() {
+            if (!poiCollectionRef) {
+                showMessage("La base de datos no está lista.", 3000);
+                navigateTo('admin');
+                return;
+            }
+            if (map) {
+                map.remove();
+                map = null;
+            }
+
+            const mapContainer = document.getElementById('map-canvas');
+            // Centrar el mapa en Tuluá por defecto
+            const defaultCenter = [4.0835, -76.1915];
+            map = L.map(mapContainer, {
+                zoomControl: true, // Habilitar zoom por defecto
+                preferCanvas: true
+            }).setView(defaultCenter, 15);
+
+            L.tileLayer('https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+                maxZoom: 20,
+                subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                attribution: 'Imagery &copy;2025 Google, Map data &copy;2025 Google'
+            }).addTo(map);
+
+            // Escuchar los POIs de Firebase y agregarlos al mapa
+            onSnapshot(query(poiCollectionRef), (querySnapshot) => {
+                // Limpiar marcadores antiguos
+                poiMarkers.forEach(marker => map.removeLayer(marker));
+                poiMarkers = [];
+
+                if (querySnapshot.empty) {
+                    showMessage("No hay POIs para mostrar en el mapa.", 2000);
+                    return;
+                }
+                
+                querySnapshot.forEach((doc) => {
+                    const poi = doc.data();
+                    const marker = L.marker([poi.lat, poi.lon])
+                        .addTo(map)
+                        .bindPopup(`<b>${poi.name}</b><br>Escala: ${poi.scale}<br>Activo: ${poi.startDate} a ${poi.endDate}`);
+                    poiMarkers.push(marker);
+                });
+
+                // Centrar el mapa en los marcadores si existen
+                if (poiMarkers.length > 0) {
+                    const group = new L.featureGroup(poiMarkers);
+                    map.fitBounds(group.getBounds().pad(0.1));
+                }
+            });
+
+            // Invalidar el tamaño del mapa después de un corto tiempo
+            setTimeout(() => map.invalidateSize(), 200);
+        }
+        
+        function jumpToCoords() {
+            const lat = parseFloat(document.getElementById('jumpto-lat').value);
+            const lon = parseFloat(document.getElementById('jumpto-lon').value);
+            if (isNaN(lat) || isNaN(lon) || !map) return;
+            map.setView([lat, lon], 18);
+        }
+
+        // --- Lógica de AR ---
+        async function startARFlow() {
+            arLoadingScreen.classList.add('active');
+            loadingStatusText.textContent = 'Solicitando permisos...';
+            
+            try {
+                // Solicitar permisos de cámara y GPS
+                await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
+                });
+
+                loadingStatusText.textContent = 'Cargando escena AR...';
+                await initializeARScene();
+
+            } catch (error) {
+                console.error('Error al iniciar AR:', error);
+                arLoadingScreen.classList.remove('active');
+                navigateTo('admin');
+                if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+                    showMessage("Necesitamos acceso a la cámara y al GPS para la AR.", 5000);
+                } else {
+                    showMessage("Error al iniciar AR: " + error.message, 5000);
+                }
+            }
+        }
+
+        async function initializeARScene() {
+            if (!poiCollectionRef) {
+                showMessage("Error: No se pudo conectar a la base de datos de POIs.", 5000);
+                arLoadingScreen.classList.remove('active');
+                return;
+            }
+
+            const arSceneContainer = document.getElementById('ar-scene-container');
+            arSceneContainer.innerHTML = ''; // Limpiar
+            
+            arScene = document.createElement('a-scene');
+            arScene.id = 'ar-scene';
+            arScene.setAttribute('embedded', '');
+            arScene.setAttribute('vr-mode-ui', 'enabled: false');
+            arScene.setAttribute('renderer', 'logarithmicDepthBuffer: true; antialias: true; precision: high; alpha: true;');
+            arScene.setAttribute('arjs', 'sourceType: webcam; videoTexture: true; debugUIEnabled: false;');
+
+            const arCamera = document.createElement('a-camera');
+            arCamera.id = 'ar-camera';
+            arCamera.setAttribute('gps-camera', 'gpsMinDistance: 5; gpsTimeInterval: 1000;');
+            arCamera.setAttribute('rotation-reader', '');
+
+            const poiContainer = document.createElement('a-entity');
+            poiContainer.id = 'poi-container';
+
+            // Cargar POIs desde Firestore
+            loadingStatusText.textContent = 'Descargando Puntos de Interés...';
+            try {
+                const q = query(poiCollectionRef);
+                const querySnapshot = await getDocs(q);
+                const now = new Date();
+                let loadedCount = 0;
+
+                querySnapshot.forEach((doc) => {
+                    const poi = doc.data();
+                    const startDate = new Date(poi.startDate);
+                    const endDate = new Date(poi.endDate);
+                    endDate.setHours(23, 59, 59, 999); 
+
+                    // Comprobar si el POI está activo hoy
+                    if (now >= startDate && now <= endDate) {
+                        const entity = document.createElement('a-entity');
+                        entity.setAttribute('gltf-model', `url(${poi.modelUrl})`);
+                        entity.setAttribute('gps-entity-place', `latitude: ${poi.lat}; longitude: ${poi.lon};`);
+                        entity.setAttribute('scale', `${poi.scale} ${poi.scale} ${poi.scale}`);
+                        entity.setAttribute('position', `0 ${poi.groundHeight || 0} 0`);
+                        entity.setAttribute('animation-mixer', '');
+
+                        if (poi.soundUrl) {
+                            entity.setAttribute('sound', `src: url(${poi.soundUrl}); autoplay: true; loop: true; volume: 0.8; rolloffFactor: 5;`);
+                        }
+                        poiContainer.appendChild(entity);
+                        loadedCount++;
+                    }
+                });
+                
+                console.log(`Cargados ${loadedCount} POIs activos.`);
+                if (loadedCount === 0) {
+                    showMessage("No hay POIs activos para mostrar hoy.", 3000);
+                }
+
+            } catch (error) {
+                console.error("Error al cargar POIs para AR:", error);
+                showMessage("Error al cargar los modelos.", 5000);
+            }
+
+            arScene.appendChild(arCamera);
+            arScene.appendChild(poiContainer);
+            arSceneContainer.appendChild(arScene);
+            
+            arScene.addEventListener('loaded', () => {
+                console.log('Escena AR cargada');
+                arLoadingScreen.classList.remove('active');
+                startGPSWatch(); // Iniciar seguimiento GPS
+            });
+        }
+
+        function stopAR() {
+            if (gpsWatchId) {
+                navigator.geolocation.clearWatch(gpsWatchId);
+                gpsWatchId = null;
+            }
+            if (arScene) {
+                arScene.pause();
+                arScene.parentNode.removeChild(arScene);
+                arScene = null;
+            }
+            console.log('AR detenida.');
+        }
+
+        function startGPSWatch() {
+            const gpsStatusEl = document.getElementById('gps-status');
+            const gpsAccuracyEl = document.getElementById('gps-accuracy');
+
+            window.addEventListener('gps-camera-update-position', (event) => {
+                const pos = event.detail.position;
+                gpsStatusEl.textContent = 'Activo';
+                gpsAccuracyEl.textContent = `${pos.accuracy.toFixed(1)}m`;
+                
+                if (pos.accuracy < 10) gpsAccuracyEl.style.color = '#4CAF50';
+                else if (pos.accuracy < 20) gpsAccuracyEl.style.color = '#FFC107';
+                else gpsAccuracyEl.style.color = '#F44336';
+            });
+
+            window.addEventListener('gps-camera-error', (event) => {
+                gpsStatusEl.textContent = 'Error';
+                gpsAccuracyEl.textContent = '--';
+                showMessage('Error de GPS: ' + event.detail.message, 5000);
+            });
+        }
+
+
+        // --- Event Listeners de Navegación ---
+        document.getElementById('goto-map-btn').addEventListener('click', () => navigateTo('map'));
+        document.getElementById('goto-ar-btn').addEventListener('click', () => navigateTo('ar'));
+        document.getElementById('back-to-admin-btn').addEventListener('click', () => navigateTo('admin'));
+        document.getElementById('goto-ar-from-map-btn').addEventListener('click', () => navigateTo('ar'));
+        document.getElementById('back-to-admin-from-ar-btn').addEventListener('click', () => navigateTo('admin'));
+        document.getElementById('jumpto-btn').addEventListener('click', jumpToCoords);
+        document.getElementById('grant-permissions-btn').addEventListener('click', () => {
+            permissionModal.style.display = 'none';
+            startARFlow(); // Reintentar el flujo
+        });
+
 
         // Iniciar la aplicación
-        initializeAdmin();
-
+        initializeApp();
     </script>
 </body>
 </html>
+
 
 
