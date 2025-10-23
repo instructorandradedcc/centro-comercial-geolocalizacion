@@ -416,7 +416,7 @@
         // ¡¡¡ADVERTENCIA DE DESARROLLO - NO ELIMINAR!!!
         // Esta constante es vital para el seguimiento de cambios.
         // Incrementar en 0.01 por CADA cambio realizado al código.
-        const APP_VERSION = '1.20'; // Reordenada inicialización para mostrar UI antes de error de Firebase
+        const APP_VERSION = '1.21'; // Reordenada inicialización y añadidas funciones de mapa
 
         // --- Modelos de ECOPIENSA (con imageUrl) ---
         const GITHUB_BASE_URL_MODELS = 'https://raw.githubusercontent.com/instructorandradedcc/7777ar/main/asetss/modelss/';
@@ -767,7 +767,6 @@
 
                 if (querySnapshot.empty) {
                     listContainer.innerHTML = '<p class="text-gray-500">No hay contenido guardado en Firebase.</p>';
-                    // Aún si está vacío, actualizamos el mapa
                      if (map && pages.map.classList.contains('active')) {
                           updateMapMarkersAndPlacedList();
                      }
@@ -892,11 +891,16 @@
                  `;
              } else if (!mapCenterCoordsEl) {
                   if (typeof mapCenterCoordsEl === 'undefined' || mapCenterCoordsEl === null) {
-                       console.warn("mapCenterCoordsEl not found during update.");
+                       // Evitar loguear repetidamente si el elemento no existe
+                       if(!window.mapCenterCoordsElWarned) {
+                           console.warn("mapCenterCoordsEl not found during update.");
+                           window.mapCenterCoordsElWarned = true; // Marcar que ya se advirtió
+                       }
                   }
              }
          }
 
+        // Dibuja/actualiza marcadores y lista derecha desde allPoisData
         function updateMapMarkersAndPlacedList() {
              if (!map || !placedPoisList) {
                   console.warn("Cannot update map markers/list: Map or list element not ready.");
@@ -1218,6 +1222,7 @@
                                  : `.model-select-cb[data-url="${removedItem.url}"]`;
                             const checkbox = document.querySelector(checkboxSelector);
                             if (checkbox) checkbox.checked = false;
+                            console.log("Item removed from modelsToPlace:", removedItem.name);
                        } else { 
                             console.error("Index mismatch when removing placed item. Array may have shifted.");
                             modelsToPlace = modelsToPlace.filter(m => m.url !== currentPlacingModel.url);
@@ -1240,162 +1245,6 @@
                  }
             }
          }
-         
-         function populateSummaryPage() { /* ... */ }
-
-        // --- AR Logic (Page 4) ---
-         async function startARFlow() { /* ... */ }
-         async function initializeARScene() { /* ... */ }
-         function stopAR() { /* ... */ }
-         function onGPSUpdate(event) { /* ... */ }
-         function onGPSError(event) { /* ... */ }
-         function startGPSWatch() { /* ... */ }
-
-        // --- Navigation Event Listeners ---
-         function setupNavigationListeners() {
-             console.log("Setting up navigation listeners..."); 
-             const setupListener = (id, event, handler) => { 
-                   const element = document.getElementById(id);
-                   if (element) {
-                        element.removeEventListener(event, handler); 
-                        element.addEventListener(event, handler); 
-                        console.log(`Listener added for ${id}`);
-                   } else {
-                        console.warn(`Element with ID '${id}' not found for listener setup.`);
-                   }
-              };
-
-             // Setup listeners
-             setupListener('goto-map-btn', 'click', handleGoToMap);
-             setupListener('back-to-admin-btn', 'click', handleBackToAdmin);
-             setupListener('goto-summary-btn', 'click', handleGoToSummary); 
-             setupListener('back-to-map-btn', 'click', handleGoToMap); 
-             setupListener('launch-ar-btn', 'click', handleLaunchAR); 
-             setupListener('back-to-summary-btn', 'click', handleBackToSummary); 
-             setupListener('grant-permissions-btn', 'click', handleGrantPermissions);
-             
-             console.log("Navigation listeners setup complete.");
-         }
-
-         // Navigation handlers
-         function handleGoToMap() { console.log("goto-map clicked"); navigateTo('map'); }
-         function handleGoToSummary() { console.log("goto-summary clicked"); navigateTo('summary'); } 
-         function handleBackToAdmin() { console.log("back-to-admin clicked"); navigateTo('admin'); }
-         function handleLaunchAR() { console.log("launch-ar clicked"); navigateTo('ar'); } 
-         function handleBackToSummary() { console.log("back-to-summary clicked"); navigateTo('summary'); } 
-         function handleGrantPermissions() { 
-             console.log("grant-permissions clicked");
-             if (permissionModal) permissionModal.style.display = 'none';
-             startARFlow(); 
-         }
-
-
-        // --- App Initialization ---
-         document.addEventListener('DOMContentLoaded', () => {
-             console.log("DOM fully loaded and parsed.");
-             
-             // --- Get DOM Element References ---
-             pages.admin = document.getElementById('admin-page');
-             pages.map = document.getElementById('map-page');
-             pages.summary = document.getElementById('summary-page');
-             pages.ar = document.getElementById('ar-page');
-             messageBox = document.getElementById('message-box');
-             permissionModal = document.getElementById('permission-modal');
-             arLoadingScreen = document.getElementById('ar-loading-screen');
-             loadingStatusText = document.getElementById('loading-status-text');
-             versionDisplay = document.getElementById('version-display'); 
-             listContainer = document.getElementById('poi-list-container');
-             loadingPois = document.getElementById('loading-pois');
-             ecopiensaSelectionList = document.getElementById('ecopiensa-selection-list');
-             loadingModelsPlaceholder = document.getElementById('loading-models-placeholder');
-             selectVideoCheckbox = document.getElementById('select-video-cb');
-             gotoMapButton = document.getElementById('goto-map-btn'); 
-             placementPanel = document.getElementById('placement-panel');
-             modelsToPlaceList = document.getElementById('models-to-place-list');
-             placementFormContainer = document.getElementById('placement-form-container');
-             placingModelName = document.getElementById('placing-model-name');
-             cancelPlacementBtn = document.getElementById('cancel-placement-btn');
-             savePlacementBtn = document.getElementById('save-placement-btn');
-             mapZoomSlider = document.getElementById('map-zoom-slider');
-             jumptoBtn = document.getElementById('jumpto-btn');
-             placePoiTypeSelect = document.getElementById('place-poi-type');
-             modelFieldsDiv = document.getElementById('model-fields');
-             videoFieldsDiv = document.getElementById('video-fields');
-             placeModelUrlInput = document.getElementById('place-model-url');
-             placeVideoUrlInput = document.getElementById('place-video-url');
-             placeNameInput = document.getElementById('place-name');
-             placedPoisPanel = document.getElementById('placed-pois-panel');
-             placedPoisList = document.getElementById('placed-pois-list');
-             editLocationPanel = document.getElementById('edit-location-panel');
-             editingPoiNameEl = document.getElementById('editing-poi-name');
-             saveEditLocationBtn = document.getElementById('save-edit-location-btn');
-             cancelEditLocationBtn = document.getElementById('cancel-edit-location-btn');
-             summaryPoiList = document.getElementById('summary-poi-list');
-             loadingSummaryPois = document.getElementById('loading-summary-pois');
-             mapCenterCoordsEl = document.getElementById('map-center-coords'); 
-             placementPreviewImageEl = document.getElementById('placement-preview-image'); 
-
-             console.log("DOM element references obtained.");
-
-             // --- Initialize App ---
-             displayAppVersion(); 
-             initializeFirebase(); 
-             initializeModelSelection(); 
-             setupNavigationListeners(); 
-
-             // --- CORRECCIÓN: Mover listeners de botones del formulario aquí ---
-             if (cancelPlacementBtn) {
-                 cancelPlacementBtn.removeEventListener('click', cancelPlacement); 
-                 cancelPlacementBtn.addEventListener('click', cancelPlacement); 
-             }
-             if (savePlacementBtn) {
-                 savePlacementBtn.removeEventListener('click', handleSavePlacement); 
-                 savePlacementBtn.addEventListener('click', handleSavePlacement); 
-             }
-             if (saveEditLocationBtn) {
-                 saveEditLocationBtn.removeEventListener('click', handleSaveEditLocation);
-                 saveEditLocationBtn.addEventListener('click', handleSaveEditLocation);
-             }
-             if (cancelEditLocationBtn) {
-                 cancelEditLocationBtn.removeEventListener('click', cancelEditLocation);
-                 cancelEditLocationBtn.addEventListener('click', cancelEditLocation);
-             }
-             if (listContainer) {
-                 listContainer.addEventListener('click', async (e) => {
-                     if (!firebaseReady || !poiCollectionRef) { 
-                         showMessage("Error: La base de datos no está lista para eliminar.", 4000);
-                         return; 
-                     }
-                    if (e.target && e.target.classList.contains('delete-btn')) { 
-                        const docId = e.target.getAttribute('data-id');
-                        if (confirm("¿Estás seguro de que quieres eliminar este punto de interés?")) {
-                            const button = e.target; 
-                            try {
-                                button.disabled = true;
-                                button.textContent = 'Eliminando...';
-                                const docRef = doc(db, poiCollectionRef.path, docId);
-                                await deleteDoc(docRef);
-                                showMessage('Punto de interés eliminado.', 3000);
-                            } catch (error) {
-                                console.error("Error al eliminar documento: ", error);
-                                showMessage("No se pudo eliminar el documento.", 5000);
-                                if (button && listContainer.contains(button)) { 
-                                   button.disabled = false;
-                                   button.textContent = 'Eliminar';
-                                }
-                            }
-                        }
-                    }
-                });
-             }
-
-             console.log("Form and List listeners attached.");
-         });
-
-        // --- Pegar aquí el resto de las funciones que faltan ---
-        // (handleSavePlacement, populateSummaryPage, startARFlow, initializeARScene, stopAR, onGPSUpdate, onGPSError, startGPSWatch, setupNavigationListeners, handle..., etc.)
-        // Asegúrate de copiar TODO el código de las funciones desde la versión anterior (v1.15)
-        // ... (el código completo de las funciones va aquí) ...
          
          function populateSummaryPage() {
              console.log("Populating Summary Page..."); 
@@ -1709,7 +1558,7 @@
              // Setup listeners
              setupListener('goto-map-btn', 'click', handleGoToMap);
              setupListener('back-to-admin-btn', 'click', handleBackToAdmin);
-             setupListener('goto-summary-btn', 'click', handleGoToSummary); 
+             setupListener('goto-summary-btn', 'click', handleGoS summary); 
              setupListener('back-to-map-btn', 'click', handleGoToMap); 
              setupListener('launch-ar-btn', 'click', handleLaunchAR); 
              setupListener('back-to-summary-btn', 'click', handleBackToSummary); 
@@ -1785,12 +1634,47 @@
              initializeModelSelection(); 
              setupNavigationListeners(); 
 
-             // Inicializar Firebase al final, ya que es la parte que falla
+             // Inicializar Firebase al final
              initializeFirebase(); 
+
+             // --- Adjuntar listeners que no son de navegación ---
+             // (Se mueven aquí para asegurar que los elementos existen)
+            if (cancelPlacementBtn) cancelPlacementBtn.addEventListener('click', cancelPlacement);
+            if (savePlacementBtn) savePlacementBtn.addEventListener('click', handleSavePlacement);
+            if (saveEditLocationBtn) saveEditLocationBtn.addEventListener('click', handleSaveEditLocation);
+            if (cancelEditLocationBtn) cancelEditLocationBtn.addEventListener('click', cancelEditLocation);
+            if (listContainer) {
+                listContainer.addEventListener('click', async (e) => {
+                    if (!firebaseReady || !poiCollectionRef) { 
+                        showMessage("Error: La base de datos no está lista para eliminar.", 4000);
+                        return; 
+                    }
+                    if (e.target && e.target.classList.contains('delete-btn')) { 
+                        const docId = e.target.getAttribute('data-id');
+                        if (confirm("¿Estás seguro de que quieres eliminar este punto de interés?")) {
+                            const button = e.target; 
+                            try {
+                                button.disabled = true;
+                                button.textContent = 'Eliminando...';
+                                const docRef = doc(db, poiCollectionRef.path, docId);
+                                await deleteDoc(docRef);
+                                showMessage('Punto de interés eliminado.', 3000);
+                            } catch (error) {
+                                console.error("Error al eliminar documento: ", error);
+                                showMessage("No se pudo eliminar el documento.", 5000);
+                                if (button && listContainer.contains(button)) { 
+                                   button.disabled = false;
+                                   button.textContent = 'Eliminar';
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            console.log("Form and List listeners attached.");
          });
 
     </script>
 </body>
 </html>
-
 
