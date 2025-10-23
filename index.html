@@ -166,7 +166,7 @@
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-2xl font-semibold mb-4">Contenido Geoposicionado Guardado</h2>
                 <div id="poi-list-container" class="space-y-4">
-                    <p id="loading-pois" class="text-gray-500 font-semibold">Conectando a Firebase...</p> <!-- Mensaje inicial más claro -->
+                    <p id="loading-pois" class="text-gray-500 font-semibold">Inicializando Firebase...</p> <!-- Mensaje inicial más claro -->
                     <!-- Los POIs se insertarán aquí dinámicamente -->
                 </div>
             </div>
@@ -262,6 +262,7 @@
         <!-- Panel de POIs Guardados (Derecha) -->
          <div id="placed-pois-panel" class="map-panel right-3"> 
              <h3 class="text-lg font-semibold mb-2">Contenido en el Mapa</h3>
+              <p class="text-xs text-amber-700 mb-2">Datos guardados en Firebase.</p>
              <div id="placed-pois-list" class="space-y-3">
                  <p class="text-sm text-gray-500">Cargando contenido guardado...</p>
                  <!-- Lista de POIs con botón de editar se insertará aquí -->
@@ -300,7 +301,7 @@
              </div>
              <div class="bg-white p-6 rounded-lg shadow-md">
                  <h2 class="text-2xl font-semibold mb-4">Contenido Configurado</h2>
-                 <p class="text-gray-600 mb-4">Este es el contenido que se mostrará en la Realidad Aumentada (si está dentro de las fechas activas).</p>
+                  <p class="text-gray-600 mb-4">Este es el contenido que se mostrará en la Realidad Aumentada (si está dentro de las fechas activas).</p>
                  <div id="summary-poi-list" class="space-y-4">
                      <p id="loading-summary-pois" class="text-gray-500">Cargando resumen...</p>
                      <!-- Resumen de POIs se insertará aquí -->
@@ -362,7 +363,7 @@
 
 
         // --- Versión de la App ---
-        const APP_VERSION = '1.14'; // Limpieza de config firebase pegada
+        const APP_VERSION = '1.15'; // Robustez Firebase Init, logs detallados
 
         // --- Modelos de ECOPIENSA ---
         const GITHUB_BASE_URL = 'https://raw.githubusercontent.com/instructorandradedcc/7777ar/main/asetss/modelss/';
@@ -384,7 +385,6 @@
 
         // **¡IMPORTANTE! PEGA TU CONFIGURACIÓN DE FIREBASE AQUÍ**
         // Reemplaza este objeto con el `firebaseConfig` de tu proyecto Firebase
-        // Lo encuentras en Project Settings > General > Your apps > Web app > SDK setup and configuration > Config
         const firebaseConfig = {
           apiKey: "AIzaSyBkxP7vqrVZMRhl-vUpHMMKjj5aIujDQ3k",
           authDomain: "centro-comercial-1ea64.firebaseapp.com",
@@ -395,8 +395,6 @@
           measurementId: "G-3ZPG0Q8FL6"
         };
         // **FIN DE LA SECCIÓN PARA PEGAR CONFIGURACIÓN**
-
-        // Se eliminaron las líneas duplicadas de import y getAnalytics de aquí
 
         let db, auth, userId, poiCollectionRef;
         let map;
@@ -498,13 +496,13 @@
             if (gotoMapButton) gotoMapButton.disabled = true; 
 
             // Validar la configuración hardcoded (básico)
-            if (!firebaseConfig || !firebaseConfig.apiKey || !firebaseConfig.projectId) {
-                 console.error("Firebase Config Error: La configuración manual 'firebaseConfig' es inválida o incompleta.");
+            if (!firebaseConfig || firebaseConfig.apiKey === "TU_API_KEY" || !firebaseConfig.projectId || firebaseConfig.projectId === "TU_PROYECTO_ID") {
+                 console.error("Firebase Config Error: La configuración manual 'firebaseConfig' parece tener los valores de ejemplo. Por favor, pega tu configuración real.");
                  firebaseReady = false;
                  if (gotoMapButton) gotoMapButton.disabled = true;
-                 const errorMsg = "Error fatal: Configuración de Firebase inválida. Revisa el código.";
+                 const errorMsg = "Error fatal: Configuración de Firebase inválida. Revisa el código y pega tus credenciales.";
                  if(loadingPois) loadingPois.textContent = errorMsg;
-                 showMessage(errorMsg, 8000);
+                 showMessage(errorMsg, 10000); // Show longer
                  return; // Detener inicialización
             }
             
@@ -535,7 +533,7 @@
                               gotoMapButton.disabled = false; 
                               console.log("GoToMap button enabled.");
                          }
-                         if (loadingPois && loadingPois.textContent.startsWith("Conectando")) { 
+                         if (loadingPois && (loadingPois.textContent.startsWith("Conectando") || loadingPois.textContent.startsWith("Inicializando"))) { 
                               loadingPois.textContent = "Conexión exitosa. Cargando POIs..."; 
                          }
                          showMessage("Conectado a la base de datos.", 2000); 
@@ -546,7 +544,7 @@
                          poiCollectionRef = null;
                          firebaseReady = false; 
                          if (gotoMapButton) gotoMapButton.disabled = true; 
-                         if (listContainer) listContainer.innerHTML = '<p class="text-red-500">Error: Autenticación fallida o cerrada.</p>';
+                         if (listContainer) listContainer.innerHTML = '<p class="text-red-500 font-semibold">Error: Autenticación fallida o cerrada.</p>';
                          allPoisData = []; 
                          console.error("Firebase User signed out or failed authentication.");
                          showMessage("Error de autenticación con Firebase. No se pueden cargar datos.", 5000);
@@ -571,9 +569,17 @@
                       console.error("Auth Error:", authError);
                       firebaseReady = false;
                       if (gotoMapButton) gotoMapButton.disabled = true;
-                      const errorMsg = `Error de Autenticación: ${authError.code || authError.message}`;
-                      if (loadingPois) loadingPois.textContent = errorMsg;
-                      showMessage(errorMsg, 6000);
+                      // Mostrar error específico en la UI
+                      let detailedErrorMsg = `Error de Autenticación: ${authError.code || authError.message}`;
+                      if (authError.code === 'auth/configuration-not-found') {
+                           detailedErrorMsg += " (Verifica que 'Anónimo' esté habilitado en Firebase Authentication > Sign-in method)";
+                      } else if (authError.message.includes("network")) {
+                            detailedErrorMsg += " (Problema de red)";
+                      } else if (authError.message.includes("permission_denied")) {
+                           detailedErrorMsg += " (Revisa las reglas de seguridad de Firestore)";
+                      }
+                      if (loadingPois) loadingPois.textContent = detailedErrorMsg;
+                      showMessage(detailedErrorMsg, 8000); // Show longer
                  }
 
             } catch (initError) {
@@ -581,9 +587,9 @@
                 console.error("Firebase Init Error:", initError);
                 firebaseReady = false; 
                 if (gotoMapButton) gotoMapButton.disabled = true;
-                const errorMsg = `Error fatal al inicializar Firebase: ${initError.message}. Verifica la configuración manual.`;
+                const errorMsg = `Error fatal al inicializar Firebase: ${initError.message}. Verifica la configuración manual y la conexión a internet.`;
                 if(loadingPois) loadingPois.textContent = errorMsg;
-                 showMessage(errorMsg, 8000);
+                 showMessage(errorMsg, 10000); // Show longer
             }
         }
 
@@ -703,7 +709,7 @@
         function loadAndListenPois() {
              if (!poiCollectionRef) { 
                   console.warn("loadAndListenPois called before poiCollectionRef is set.");
-                  if (loadingPois) loadingPois.textContent = "Esperando configuración de base de datos...";
+                  if (loadingPois && !loadingPois.textContent.toLowerCase().includes("error")) loadingPois.textContent = "Esperando configuración de base de datos...";
                   return; 
              }
              if (!listContainer || !loadingPois) { 
@@ -711,7 +717,7 @@
                   return; 
              }
             
-            // Solo mostrar "Cargando" si no hay un mensaje de error
+            // Only show "Loading..." if there isn't already an error message
             if (loadingPois && !loadingPois.textContent.toLowerCase().includes("error")) {
                  loadingPois.textContent = "Cargando puntos guardados..."; 
                  loadingPois.style.display = 'block'; 
@@ -720,14 +726,14 @@
             
             // Usar onSnapshot para actualizaciones en tiempo real
             onSnapshot(q, (querySnapshot) => {
-                 if (!listContainer || !loadingPois) return; // Verificar si los elementos aún existen
+                 if (!listContainer || !loadingPois) return; 
                 
                 loadingPois.style.display = 'none'; 
                 allPoisData = []; 
                 listContainer.innerHTML = ''; 
 
                 if (querySnapshot.empty) {
-                    listContainer.innerHTML = '<p class="text-gray-500">No hay contenido guardado.</p>';
+                    listContainer.innerHTML = '<p class="text-gray-500">No hay contenido guardado en Firebase.</p>';
                     return;
                 }
 
@@ -736,6 +742,7 @@
                     allPoisData.push(poi); 
 
                     const poiElement = document.createElement('div');
+                    // ... (innerHTML remains the same) ...
                     poiElement.className = 'poi-item p-4 border border-gray-200 rounded-lg shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4 items-center';
                     let typeLabel = poi.poiType === 'video' ? 'Video' : 'Modelo 3D';
                     let urlToShow = poi.poiType === 'video' ? (poi.videoUrl || 'N/A') : (poi.modelUrl || 'N/A');
@@ -766,10 +773,12 @@
                  console.log(`Cache local 'allPoisData' actualizado con ${allPoisData.length} POIs.`);
 
             }, (error) => {
-                console.error("Error al escuchar POIs:", error);
+                console.error("Error al escuchar POIs (Firestore):", error);
                  if (loadingPois) loadingPois.style.display = 'none'; 
-                 if (listContainer) listContainer.innerHTML = `<p class="text-red-500">Error al cargar contenido guardado: ${error.message}</p>`;
+                 // Mostrar error de Firestore si ocurre después de la conexión inicial
+                 if (listContainer) listContainer.innerHTML = `<p class="text-red-500 font-semibold">Error al cargar datos de Firestore: ${error.message}. Verifica las reglas de seguridad y la conexión.</p>`;
                 allPoisData = []; 
+                 showMessage("Error al actualizar la lista de contenido.", 5000);
             });
         }
 
@@ -844,72 +853,9 @@
              }).addTo(map);
 
             // Listener to update markers and placed POIs panel
-            onSnapshot(query(poiCollectionRef), (querySnapshot) => {
-                 console.log("Map onSnapshot triggered."); 
-                 if (!map) {
-                      console.warn("Snapshot updated but map is not initialized. Skipping marker update.");
-                      return; 
-                 }
-                
-                 Object.values(poiMarkers).forEach(marker => {
-                      if (map.hasLayer(marker)) map.removeLayer(marker);
-                 });
-                 poiMarkers = {}; 
-
-                 if (placedPoisList) placedPoisList.innerHTML = ''; 
-                 
-                 let hasPois = false;
-                 querySnapshot.forEach((doc) => {
-                     hasPois = true;
-                     const poi = { id: doc.id, ...doc.data() };
-                      
-                     // Create Map Marker
-                     if (typeof poi.lat === 'number' && typeof poi.lon === 'number') {
-                          let iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png'; 
-                          if (poi.poiType === 'video') {
-                               iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png'; 
-                          }
-
-                         const marker = L.marker([poi.lat, poi.lon], {
-                              icon: L.icon({
-                                   iconUrl: iconUrl,
-                                   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                                   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-                              })
-                         })
-                             .addTo(map)
-                             .bindPopup(`<b>${poi.name || 'No Name'}</b> (${poi.poiType || 'model'})`);
-                         poiMarkers[poi.id] = marker; 
-                     } else {
-                          console.warn("POI for map missing coordinates:", poi.id);
-                     }
-                     
-                     // Create List Item for Editing (Right Panel)
-                      if (placedPoisList) {
-                          const listItem = document.createElement('div');
-                          listItem.className = 'placed-poi-item p-2 border-b flex justify-between items-center';
-                          listItem.innerHTML = `
-                              <span class="text-sm font-medium">${poi.name || 'No Name'}</span>
-                              <button data-id="${poi.id}" class="edit-location-btn bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded">
-                                  Edit Loc.
-                              </button>
-                          `;
-                           const editBtn = listItem.querySelector('.edit-location-btn');
-                           editBtn.removeEventListener('click', handleEditLocationClick);
-                           editBtn.addEventListener('click', handleEditLocationClick);
-                          placedPoisList.appendChild(listItem);
-                      } else {
-                           console.warn("placedPoisList element not found when trying to add item.");
-                      }
-                 });
-                 
-                 if (!hasPois && placedPoisList) {
-                      placedPoisList.innerHTML = '<p class="text-sm text-gray-500">No content saved on map yet.</p>';
-                 }
-
-                 console.log(`Updated ${Object.keys(poiMarkers).length} markers and placed POIs panel.`);
-                 populatePlacementPanel(); 
-            });
+            // NO necesita llamar a onSnapshot aquí, ya se llama en initializeFirebase
+            // Solo necesitamos dibujar los marcadores iniciales desde el cache allPoisData
+            updateMapMarkersAndPlacedList();
 
             populatePlacementPanel(); 
             cancelPlacement(); 
@@ -941,6 +887,64 @@
 
             setTimeout(() => { if (map) map.invalidateSize(); }, 200); 
             console.log("Map initialization complete.");
+        }
+        
+        // Función para dibujar/actualizar marcadores y lista derecha desde allPoisData
+        function updateMapMarkersAndPlacedList() {
+             if (!map || !placedPoisList) {
+                  console.warn("Cannot update map markers/list: Map or list element not ready.");
+                  return;
+             }
+             console.log("Updating map markers and placed POIs list from local cache...");
+             
+             // Limpiar marcadores y lista
+             Object.values(poiMarkers).forEach(marker => {
+                  if (map.hasLayer(marker)) map.removeLayer(marker);
+             });
+             poiMarkers = {}; 
+             placedPoisList.innerHTML = ''; 
+             
+             let hasPois = false;
+             allPoisData.forEach(poi => { // Iterar sobre el array local
+                 hasPois = true;
+                  
+                 // Crear Marcador
+                 if (typeof poi.lat === 'number' && typeof poi.lon === 'number') {
+                      let iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png'; 
+                      if (poi.poiType === 'video') {
+                           iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png'; 
+                      }
+                     const marker = L.marker([poi.lat, poi.lon], { 
+                          icon: L.icon({
+                               iconUrl: iconUrl,
+                               shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                               iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+                          })
+                     })
+                         .addTo(map)
+                         .bindPopup(`<b>${poi.name || 'No Name'}</b> (${poi.poiType || 'model'})`);
+                     poiMarkers[poi.id] = marker; 
+                 } else { /* ... */ }
+                 
+                 // Crear Elemento en Lista Derecha
+                 const listItem = document.createElement('div');
+                 listItem.className = 'placed-poi-item p-2 border-b flex justify-between items-center';
+                 listItem.innerHTML = `
+                     <span class="text-sm font-medium">${poi.name || 'No Name'}</span>
+                     <button data-id="${poi.id}" class="edit-location-btn bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded">
+                         Edit Loc.
+                     </button>
+                 `;
+                 const editBtn = listItem.querySelector('.edit-location-btn');
+                 editBtn.removeEventListener('click', handleEditLocationClick);
+                 editBtn.addEventListener('click', handleEditLocationClick);
+                 placedPoisList.appendChild(listItem);
+             });
+             
+             if (!hasPois) {
+                  placedPoisList.innerHTML = '<p class="text-sm text-gray-500">No content saved on map yet.</p>';
+             }
+             console.log(`Updated ${Object.keys(poiMarkers).length} markers and placed POIs panel.`);
         }
 
 
@@ -1054,6 +1058,7 @@
                      lat: newLatLng.lat,
                      lon: newLatLng.lng
                  });
+                 // No necesitamos llamar a updatePoi localmente, onSnapshot lo hará
                  showMessage('Location updated successfully!', 3000);
                  cancelEditLocation(); // Exit edit mode
 
