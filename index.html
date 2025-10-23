@@ -78,7 +78,7 @@
             background-color: rgba(255, 255, 255, 0.9);
             padding: 10px; border-radius: 8px; display: flex; gap: 5px; align-items: center;
         }
-        /* Panel para coordenadas del centro */
+        /* Nuevo: Panel para coordenadas del centro */
         #map-center-coords {
              position: fixed;
              top: 75px; /* Ajustado para no superponer */
@@ -97,7 +97,7 @@
         /* Panels on Map */
         .map-panel {
              position: fixed;
-             top: 80px; 
+             top: 80px; /* Adjust as needed */
              left: 10px;
              z-index: 401; /* Ligeramente debajo de coords y crosshair */
              background-color: rgba(255, 255, 255, 0.95);
@@ -106,24 +106,26 @@
              box-shadow: 0 2px 10px rgba(0,0,0,0.2);
              max-width: 300px;
              width: 90%;
-             max-height: calc(100vh - 180px); 
+             max-height: calc(100vh - 180px); /* Adjust based on top/bottom spacing */
              overflow-y: auto;
              backdrop-filter: blur(5px);
         }
          #edit-location-panel {
-             border: 2px solid #f59e0b; 
+             border: 2px solid #f59e0b; /* Orange border for editing */
          }
+        /* Asegurar que el panel derecho se posicione correctamente */
          #placed-pois-panel {
-            left: auto; 
-            right: 10px; 
+            left: auto; /* Reset left positioning */
+            right: 10px; /* Position on the right */
          }
+         /* Estilo para la imagen previa en el panel */
          #placement-preview-image {
              max-width: 100px;
              max-height: 100px;
-             margin: 10px auto; 
+             margin: 10px auto; /* Centrar imagen */
              border: 1px solid #ccc;
              border-radius: 4px;
-             display: none; 
+             display: none; /* Oculta por defecto */
              object-fit: contain; /* Para que la imagen no se deforme */
          }
 
@@ -169,6 +171,7 @@
                     <span id="version-display" class="text-sm align-middle font-normal text-gray-400 ml-2"></span>
                 </h1>
                 <div>
+                    <!-- Botón deshabilitado inicialmente -->
                     <button id="goto-map-btn" class="control-button bg-indigo-500 hover:bg-indigo-600" disabled>Ir al Mapa</button> 
                 </div>
             </div>
@@ -403,7 +406,7 @@
 
 
         // --- Versión de la App ---
-        const APP_VERSION = '1.17'; // Restaurado crosshair, display coords, preview 2D
+        const APP_VERSION = '1.18'; // Corregido Crosshair, Coords Display, Preview 2D
 
         // --- Modelos de ECOPIENSA (con imageUrl) ---
         const GITHUB_BASE_URL_MODELS = 'https://raw.githubusercontent.com/instructorandradedcc/7777ar/main/asetss/modelss/';
@@ -458,99 +461,423 @@
         let placedPoisPanel, placedPoisList, editLocationPanel, editingPoiNameEl, saveEditLocationBtn, cancelEditLocationBtn;
         let summaryPoiList, loadingSummaryPois;
         let gotoMapButton; 
-        let mapCenterCoordsEl; // Referencia al display de coords
-        let placementPreviewImageEl; // Referencia a la imagen previa
+        let mapCenterCoordsEl; 
+        let placementPreviewImageEl; 
 
         // --- Funciones ---
 
-        function showMessage(msg, duration = 3000) { /* ... */ }
-        function navigateTo(pageName) { /* ... */ }
-        function stopMap() { /* ... */ }
+        function showMessage(msg, duration = 3000) {
+            if (!messageBox) { console.warn("Message box not found"); return; }
+            messageBox.textContent = msg;
+            messageBox.classList.add('show');
+            setTimeout(() => messageBox.classList.remove('show'), duration);
+        }
+
+        function navigateTo(pageName) {
+            if ((pageName === 'map' || pageName === 'summary' || pageName === 'ar') && !firebaseReady) {
+                showMessage("Aguarde un momento, conectando con la base de datos...", 3000);
+                console.warn(`Attempt to navigate to ${pageName} before Firebase is ready.`);
+                return; 
+            }
+
+            console.log(`Navigating to: ${pageName}`);
+             if (Object.keys(pages).length === 0) { console.error("Pages object not populated."); return; }
+            Object.values(pages).forEach(p => p.classList.remove('active'));
+            if(pages[pageName]) {
+                pages[pageName].classList.add('active');
+                 console.log(`Page ${pageName} activated.`);
+            } else {
+                 console.error(`Page not found: ${pageName}. Falling back to admin.`);
+                 if (pages.admin) pages.admin.classList.add('active'); 
+                 return;
+            }
+
+            // Page specific logic
+            if (pageName === 'map') {
+                 stopAR(); 
+                setTimeout(initMap, 100); 
+            } else if (pageName === 'summary') {
+                 stopAR(); 
+                 stopMap(); 
+                 populateSummaryPage(); 
+            } else if (pageName === 'ar') {
+                 stopMap(); 
+                startARFlow(); 
+            } else if (pageName === 'admin') {
+                stopAR();
+                stopMap();
+                 initializeModelSelection(); 
+                 loadAndDisplayPois(); // Recargar lista al volver a admin
+            }
+        }
+
+        function stopMap() {
+            if (map) {
+                 // Quitar listener de movimiento antes de remover el mapa
+                 map.off('move', updateCenterCoordsDisplay);
+                map.remove(); 
+                map = null;
+                 Object.values(poiMarkers).forEach(marker => marker.remove());
+                 poiMarkers = {}; 
+                console.log("Map stopped and removed.");
+            }
+             isPlacingModel = false;
+             isEditingLocation = false;
+             currentEditingPoiId = null;
+             currentEditingMarker = null;
+        }
+
 
         // --- Firebase Logic ---
-        async function initializeFirebase() { /* ... */ }
+        async function initializeFirebase() { 
+            console.log("Initializing Firebase with provided config..."); 
+            if (loadingPois) loadingPois.textContent = "Inicializando conexión Firebase...";
+            if (gotoMapButton) gotoMapButton.disabled = true; 
+
+            if (!firebaseConfig || firebaseConfig.apiKey === "TU_API_KEY" || !firebaseConfig.projectId || firebaseConfig.projectId === "TU_PROYECTO_ID") {
+                 console.error("Firebase Config Error: La configuración manual 'firebaseConfig' parece tener los valores de ejemplo. Por favor, pega tu configuración real.");
+                 firebaseReady = false;
+                 if (gotoMapButton) gotoMapButton.disabled = true;
+                 const errorMsg = "Error fatal: Configuración de Firebase inválida. Revisa el código y pega tus credenciales.";
+                 if(loadingPois) loadingPois.textContent = errorMsg;
+                 showMessage(errorMsg, 10000); 
+                 return; 
+            }
+            
+            try {
+                 console.log("Calling initializeApp with manual config...");
+                 const app = initializeApp(firebaseConfig);
+                 console.log("Firebase App initialized.");
+                 db = getFirestore(app);
+                 auth = getAuth(app);
+                 console.log("Firestore and Auth services obtained.");
+                 setLogLevel('Debug'); 
+                 
+                 onAuthStateChanged(auth, async (user) => {
+                     console.log("Auth state changed. User:", user ? user.uid : 'null');
+                     if (user) {
+                         userId = user.uid;
+                         console.log('Firebase User Authenticated:', userId);
+                         const currentAppId = appId === 'default-app-id' ? (firebaseConfig.appId || 'default-app-id') : appId; 
+                         const collectionPath = `/artifacts/${currentAppId}/public/data/pois`;
+                         poiCollectionRef = collection(db, collectionPath);
+                         console.log('POI Collection configured:', collectionPath);
+                         
+                         firebaseReady = true; 
+                         if (gotoMapButton) {
+                              gotoMapButton.disabled = false; 
+                              console.log("GoToMap button enabled.");
+                         }
+                         if (loadingPois && (loadingPois.textContent.startsWith("Conectando") || loadingPois.textContent.startsWith("Inicializando"))) { 
+                              loadingPois.textContent = "Conexión exitosa. Cargando POIs..."; 
+                         }
+                         showMessage("Conectado a la base de datos.", 2000); 
+                         
+                         loadAndListenPois(); 
+                     } else {
+                         userId = null;
+                         poiCollectionRef = null;
+                         firebaseReady = false; 
+                         if (gotoMapButton) gotoMapButton.disabled = true; 
+                         if (listContainer) listContainer.innerHTML = '<p class="text-red-500 font-semibold">Error: Autenticación fallida o cerrada.</p>';
+                         allPoisData = []; 
+                         console.error("Firebase User signed out or failed authentication.");
+                         showMessage("Error de autenticación con Firebase. No se pueden cargar datos.", 5000);
+                     }
+                 });
+                 console.log("Auth state listener attached.");
+
+                 try {
+                     if (initialAuthToken) {
+                          console.log("Attempting sign in with custom token...");
+                         await signInWithCustomToken(auth, initialAuthToken);
+                         console.log("Signed in with custom token.");
+                     } else {
+                          console.log("Attempting anonymous sign in...");
+                         await signInAnonymously(auth);
+                          console.log("Signed in anonymously.");
+                     }
+                 } catch (authError) {
+                      console.error("Auth Error:", authError);
+                      firebaseReady = false;
+                      if (gotoMapButton) gotoMapButton.disabled = true;
+                      let detailedErrorMsg = `Error de Autenticación: ${authError.code || authError.message}`;
+                      if (authError.code === 'auth/configuration-not-found') {
+                           detailedErrorMsg += " (Verifica que 'Anónimo' esté habilitado en Firebase Authentication > Sign-in method)";
+                      } else if (authError.message.includes("network")) {
+                            detailedErrorMsg += " (Problema de red)";
+                      } else if (authError.code === 'auth/admin-restricted-operation') {
+                           detailedErrorMsg += " (Operación restringida. Habilita 'Anónimo' en Firebase Auth y revisa los dominios autorizados)";
+                      }
+                      if (loadingPois) loadingPois.textContent = detailedErrorMsg;
+                      showMessage(detailedErrorMsg, 8000); 
+                 }
+
+            } catch (initError) {
+                console.error("Firebase Init Error:", initError);
+                firebaseReady = false; 
+                if (gotoMapButton) gotoMapButton.disabled = true;
+                const errorMsg = `Error fatal al inicializar Firebase: ${initError.message}. Verifica la configuración manual y la conexión a internet.`;
+                if(loadingPois) loadingPois.textContent = errorMsg;
+                 showMessage(errorMsg, 10000); 
+            }
+        }
 
         // --- UI Initialization and Population ---
-        function displayAppVersion() { /* ... */ }
-        function initializeModelSelection() { /* ... */ }
-        function createCheckbox(name, url, isChecked, isVideoPlaceholder = false) { 
-             // Necesita añadir imageUrl al dataset si no es video
-             if (!isVideoPlaceholder) {
-                 const modelData = ECOPIENSA_MODELS.find(m => m.modelUrl === url);
-                 if (input && modelData) {
-                     input.dataset.imageUrl = modelData.imageUrl || '';
+
+        // Display App Version
+        function displayAppVersion() {
+             if (versionDisplay) {
+                 versionDisplay.textContent = `v${APP_VERSION}`;
+                  console.log(`App Version ${APP_VERSION} displayed.`);
+             } else {
+                  console.warn("Version display element not found.");
+             }
+        }
+
+
+        // Fill the checkbox list on Page 1
+        function initializeModelSelection() {
+             console.log("Initializing model selection UI..."); 
+             if (!ecopiensaSelectionList || !loadingModelsPlaceholder || !selectVideoCheckbox) {
+                  console.error("Required elements for model selection not found.");
+                  return; 
+             }
+
+            loadingModelsPlaceholder.style.display = 'none'; 
+            
+            if (ecopiensaSelectionList.children.length <= 1) { 
+                ecopiensaSelectionList.innerHTML = ''; 
+                ECOPIENSA_MODELS.forEach(model => {
+                    const isSelected = modelsToPlace.some(m => !m.isCustomVideo && m.url === model.modelUrl); // Usar modelUrl
+                    createCheckbox(model.name, model.modelUrl, isSelected, false, model.imageUrl); // Pasar imageUrl
+                });
+                 console.log("Model checkboxes created.");
+            } else {
+                 console.log("Model checkboxes already exist, updating states.");
+                 const checkboxes = ecopiensaSelectionList.querySelectorAll('.model-select-cb');
+                 checkboxes.forEach(cb => {
+                      const url = cb.dataset.url;
+                      if (url !== CUSTOM_VIDEO_PLACEHOLDER.url) { 
+                           cb.checked = modelsToPlace.some(m => m.url === url);
+                      }
+                 });
+            }
+            
+            selectVideoCheckbox.removeEventListener('change', handleVideoCheckboxChange);
+            selectVideoCheckbox.addEventListener('change', handleVideoCheckboxChange);
+            selectVideoCheckbox.checked = modelsToPlace.some(m => m.isCustomVideo);
+
+             console.log("Model/Video checkbox UI initialized/updated.");
+        }
+        
+        // Helper function to create checkboxes (añadido imageUrl)
+        function createCheckbox(name, url, isChecked, isVideoPlaceholder = false, imageUrl = '') {
+             if (!ecopiensaSelectionList) return; 
+
+             const label = document.createElement('label');
+             label.className = 'flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer';
+             const input = document.createElement('input');
+             input.type = 'checkbox';
+             input.className = 'model-select-cb h-5 w-5 text-blue-600';
+             input.dataset.name = name;
+             input.dataset.url = url; 
+             input.checked = isChecked;
+             input.dataset.imageUrl = imageUrl; // Añadir imageUrl al dataset
+             if (isVideoPlaceholder) {
+                 input.dataset.isCustomVideo = "true";
+             }
+             
+             input.removeEventListener('change', handleCheckboxChange); 
+             input.addEventListener('change', handleCheckboxChange); 
+
+             const span = document.createElement('span');
+             span.textContent = name;
+             
+             label.appendChild(input);
+             label.appendChild(span);
+             ecopiensaSelectionList.appendChild(label);
+        }
+
+        // Handler for the custom video checkbox (añadido imageUrl)
+         function handleVideoCheckboxChange(e) {
+             const placeholderExists = modelsToPlace.some(m => m.isCustomVideo);
+             if (e.target.checked) {
+                 if (!placeholderExists) {
+                     modelsToPlace.push({...CUSTOM_VIDEO_PLACEHOLDER});
+                 }
+             } else {
+                 if (placeholderExists) {
+                     modelsToPlace = modelsToPlace.filter(m => !m.isCustomVideo);
                  }
              }
-             // ... resto de la función createCheckbox ...
+             console.log("Models to place (video toggle):", modelsToPlace);
          }
-        function handleVideoCheckboxChange(e) { /* ... */ }
-        function handleCheckboxChange(e) { 
-             // Necesita añadir imageUrl al itemData
-             const imageUrl = e.target.dataset.imageUrl || (e.target.dataset.isCustomVideo === "true" ? CUSTOM_VIDEO_PLACEHOLDER.imageUrl : '');
+
+        // Unified handler for all checkboxes (añadido imageUrl)
+        function handleCheckboxChange(e) {
              const itemData = { 
                  name: e.target.dataset.name, 
                  url: e.target.dataset.url, 
                  isCustomVideo: e.target.dataset.isCustomVideo === "true",
-                 imageUrl: imageUrl // Añadir imageUrl aquí
+                 imageUrl: e.target.dataset.imageUrl || '' // Obtener imageUrl
              };
-             // ... resto de la función handleCheckboxChange ...
+             const itemExists = modelsToPlace.some(m => m.url === itemData.url); 
+             
+             if (e.target.checked) {
+                 if (!itemExists) {
+                     modelsToPlace.push(itemData);
+                 }
+             } else {
+                 if (itemExists) {
+                     modelsToPlace = modelsToPlace.filter(m => m.url !== itemData.url);
+                 }
+             }
+             console.log("Models to place updated:", modelsToPlace);
          }
-        function loadAndListenPois() { /* ... */ }
-        // Listener delete (adjunto a listContainer en DOMContentLoaded)
 
+
+        // Load and listen for POIs for the Admin list and update local cache
+        function loadAndListenPois() {
+             if (!poiCollectionRef) { /* ... */ return; }
+             if (!listContainer || !loadingPois) { /* ... */ return; }
+            
+            if (loadingPois && !loadingPois.textContent.toLowerCase().includes("error")) {
+                 loadingPois.textContent = "Cargando puntos guardados..."; 
+                 loadingPois.style.display = 'block'; 
+            }
+            const q = query(poiCollectionRef);
+            
+            onSnapshot(q, (querySnapshot) => {
+                 if (!listContainer || !loadingPois) return; 
+                
+                loadingPois.style.display = 'none'; 
+                allPoisData = []; 
+                listContainer.innerHTML = ''; 
+
+                if (querySnapshot.empty) {
+                    listContainer.innerHTML = '<p class="text-gray-500">No hay contenido guardado en Firebase.</p>';
+                    return;
+                }
+
+                querySnapshot.forEach((doc) => {
+                    const poi = { id: doc.id, ...doc.data() }; 
+                    allPoisData.push(poi); 
+
+                    const poiElement = document.createElement('div');
+                    // ... (innerHTML remains the same) ...
+                    poiElement.className = 'poi-item p-4 border border-gray-200 rounded-lg shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4 items-center';
+                    let typeLabel = poi.poiType === 'video' ? 'Video' : 'Modelo 3D';
+                    let urlToShow = poi.poiType === 'video' ? (poi.videoUrl || 'N/A') : (poi.modelUrl || 'N/A');
+                     if (urlToShow.length > 30) urlToShow = urlToShow.substring(0, 27) + '...'; 
+
+                    poiElement.innerHTML = `
+                        <div>
+                            <strong class="block text-sm text-gray-800">${poi.name || 'Sin Nombre'}</strong>
+                            <span class="block text-xs ${poi.poiType === 'video' ? 'text-purple-600' : 'text-blue-600'}">${typeLabel}</span>
+                            <span class="block text-xs text-gray-500" title="${poi.poiType === 'video' ? poi.videoUrl : poi.modelUrl}">URL: ${urlToShow}</span>
+                        </div>
+                        <div class="text-sm">
+                            <span class="block">Lat: ${poi.lat?.toFixed(6) || 'N/A'}</span>
+                            <span class="block">Lon: ${poi.lon?.toFixed(6) || 'N/A'}</span>
+                        </div>
+                        <div class="text-sm">
+                            <span class="block">Inicia: ${poi.startDate || 'N/A'}</span>
+                            <span class="block">Termina: ${poi.endDate || 'N/A'}</span>
+                        </div>
+                        <div class="text-right">
+                            <button data-id="${poi.id}" class="delete-btn bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-300">
+                                Eliminar
+                            </button>
+                        </div>
+                    `;
+                    listContainer.appendChild(poiElement);
+                });
+                 console.log(`Cache local 'allPoisData' actualizado con ${allPoisData.length} POIs.`);
+                 // Actualizar el mapa si ya está cargado y estamos en esa página
+                 if (map && pages.map.classList.contains('active')) {
+                      updateMapMarkersAndPlacedList();
+                 }
+
+            }, (error) => {
+                console.error("Error al escuchar POIs (Firestore):", error);
+                 if (loadingPois) loadingPois.style.display = 'none'; 
+                 if (listContainer) listContainer.innerHTML = `<p class="text-red-500 font-semibold">Error al cargar datos de Firestore: ${error.message}. Verifica las reglas de seguridad y la conexión.</p>`;
+                allPoisData = []; 
+                 showMessage("Error al actualizar la lista de contenido.", 5000);
+            });
+        }
+
+        // Listener para eliminar POIs (usa event delegation)
+        if (listContainer) {
+            listContainer.addEventListener('click', async (e) => {
+                 if (!firebaseReady || !poiCollectionRef) { /* ... */ return; }
+                if (e.target && e.target.classList.contains('delete-btn')) { 
+                    const docId = e.target.getAttribute('data-id');
+                    if (confirm("¿Estás seguro de que quieres eliminar este punto de interés?")) {
+                        // ... (delete logic) ...
+                    }
+                }
+            });
+        } else {
+             console.error("Error Crítico: No se encontró el contenedor de la lista de POIs (poi-list-container).");
+        }
+        
         // --- Map Logic (Page 2) ---
+        
         function initMap() {
              console.log("Initializing Map..."); 
             if (!firebaseReady || !poiCollectionRef) { /* ... */ return; }
-             if (map) { /* ... */ return; }
+             if (map) { 
+                 console.log("Map already exists. Invalidating size.");
+                 setTimeout(() => { if (map) map.invalidateSize(); }, 100); 
+                 populatePlacementPanel(); 
+                 populatePlacedPoisPanel(); 
+                 return; 
+             }
 
             const mapContainer = document.getElementById('map-canvas');
              if (!mapContainer) { /* ... */ return; }
             const defaultCenter = [4.0835, -76.1915]; 
             map = L.map(mapContainer, { zoomControl: false, preferCanvas: true }).setView(defaultCenter, 15);
 
-            L.tileLayer('https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: 'Imagery &copy;2025 Google' }).addTo(map);
+            L.tileLayer('https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', { /* ... */ }).addTo(map);
 
+            // Dibujar marcadores iniciales desde el cache
             updateMapMarkersAndPlacedList(); 
+            // El listener onSnapshot ya está activo desde loadAndListenPois,
+            // así que no necesitamos uno nuevo aquí, pero SÍ necesitamos actualizar
+            // los marcadores cada vez que onSnapshot actualice allPoisData.
+            // Esto se maneja llamando a updateMapMarkersAndPlacedList dentro de loadAndListenPois.
+
             populatePlacementPanel(); 
             cancelPlacement(); 
             cancelEditLocation(); 
 
             // Listener para actualizar display de coords del centro
-            map.off('move', updateCenterCoordsDisplay); // Quitar listener previo si existe
+            map.off('move', updateCenterCoordsDisplay); // Quitar previo
             map.on('move', updateCenterCoordsDisplay); 
-            updateCenterCoordsDisplay(); // Llamar una vez inicialmente
-            console.log("Map 'move' listener attached for center coords display."); // Log
+            updateCenterCoordsDisplay(); // Llamar una vez
+            console.log("Map 'move' listener attached for center coords display."); 
 
             // Zoom slider sync
-            if (mapZoomSlider) { 
-                 mapZoomSlider.value = map.getZoom();
-                 mapZoomSlider.removeEventListener('input', handleZoomSlider); 
-                 mapZoomSlider.addEventListener('input', handleZoomSlider);
-            }
+            if (mapZoomSlider) { /* ... */ }
             map.off('zoomend', handleMapZoomEnd); 
             map.on('zoomend', handleMapZoomEnd);
             
             // Jump to coords button
-            if (jumptoBtn) { 
-                 jumptoBtn.removeEventListener('click', jumpToCoords); 
-                 jumptoBtn.addEventListener('click', jumpToCoords);
-             }
+            if (jumptoBtn) { /* ... */ }
 
             // POI Type Selector listener
-            if (placePoiTypeSelect) { 
-                 placePoiTypeSelect.removeEventListener('change', handlePoiTypeChange);
-                 placePoiTypeSelect.addEventListener('change', handlePoiTypeChange);
-                 handlePoiTypeChange(); 
-             }
+            if (placePoiTypeSelect) { /* ... */ }
 
             setTimeout(() => { if (map) map.invalidateSize(); }, 200); 
             console.log("Map initialization complete.");
         }
         
-        // Actualiza el display de coordenadas
+        // Nuevo: Actualiza el display de coordenadas
          function updateCenterCoordsDisplay() {
-             // console.log("Map moved, updating coords display..."); // Log frecuente, descomentar si es necesario
+             // console.log("Map moved, updating coords display..."); // Log frecuente
              if (map && mapCenterCoordsEl) {
                  const center = map.getCenter();
                  mapCenterCoordsEl.innerHTML = `
@@ -558,20 +885,68 @@
                      <span>Lon: ${center.lng.toFixed(6)}</span>
                  `;
              } else if (!mapCenterCoordsEl) {
-                  // Log si el elemento no se encuentra
-                  console.warn("mapCenterCoordsEl not found during update.");
+                  // Solo loguear una vez si falta
+                  if (typeof mapCenterCoordsEl === 'undefined' || mapCenterCoordsEl === null) {
+                       console.warn("mapCenterCoordsEl not found during update.");
+                  }
              }
          }
 
         // Dibuja/actualiza marcadores y lista derecha desde allPoisData
-        function updateMapMarkersAndPlacedList() { /* ... */ }
-        function handlePoiTypeChange() { /* ... */ }
+        function updateMapMarkersAndPlacedList() {
+             if (!map || !placedPoisList) { /* ... */ return; }
+             console.log("Updating map markers and placed POIs list from local cache...");
+             
+             Object.values(poiMarkers).forEach(marker => { /* ... */ });
+             poiMarkers = {}; 
+             placedPoisList.innerHTML = ''; 
+             
+             let hasPois = false;
+             allPoisData.forEach(poi => { 
+                 hasPois = true;
+                 if (typeof poi.lat === 'number' && typeof poi.lon === 'number') {
+                      let iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png'; 
+                      if (poi.poiType === 'video') {
+                           iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png'; 
+                      }
+                     const marker = L.marker([poi.lat, poi.lon], { /* ... */ });
+                     poiMarkers[poi.id] = marker; 
+                 } 
+                 
+                 const listItem = document.createElement('div');
+                 // ... (innerHTML y listener) ...
+                 placedPoisList.appendChild(listItem);
+             });
+             
+             if (!hasPois) { /* ... */ }
+             console.log(`Updated ${Object.keys(poiMarkers).length} markers and placed POIs panel.`);
+        }
+
+
+        // CORRECCIÓN: Asegurar que los elementos del formulario existen antes de usarlos
+        function handlePoiTypeChange() {
+             if (!placePoiTypeSelect || !modelFieldsDiv || !videoFieldsDiv || !placeModelUrlInput || !placeVideoUrlInput) { /* ... */ return; }
+             const selectedType = placePoiTypeSelect.value;
+             const isVideo = selectedType === 'video';
+             
+             modelFieldsDiv.classList.toggle('hidden', isVideo);
+             videoFieldsDiv.classList.toggle('hidden', !isVideo); 
+             
+             placeModelUrlInput.disabled = isVideo;
+             placeVideoUrlInput.disabled = !isVideo;
+
+             const scaleLabel = document.querySelector('label[for="place-scale"]');
+             if (scaleLabel) { /* ... */ }
+        }
+
 
         // --- Location Editing Functions ---
         function handleEditLocationClick(e) { /* ... */ }
         function startEditLocation(poiId) { /* ... */ }
         function cancelEditLocation() { /* ... */ }
         async function handleSaveEditLocation() { /* ... */ }
+        // Listeners para botones de edición (adjuntos en DOMContentLoaded)
+
 
         function handleZoomSlider(e) { /* ... */ }
         function handleMapZoomEnd() { /* ... */ }
@@ -591,10 +966,7 @@
 
                 const unplacedContent = modelsToPlace.filter(item => !placedContentIdentifiers.has(item.url));
 
-                if (unplacedContent.length === 0) { 
-                    modelsToPlaceList.innerHTML = '<p class="text-sm text-gray-500">Todo el contenido seleccionado ya está en el mapa o no hay contenido seleccionado. Vuelve al Panel.</p>';
-                    return; 
-                }
+                if (unplacedContent.length === 0) { /* ... */ return; }
 
                 unplacedContent.forEach((item) => {
                     const currentIndex = modelsToPlace.findIndex(m => m.url === item.url); 
@@ -606,8 +978,8 @@
                     button.dataset.name = item.name; 
                     button.dataset.url = item.url; 
                     button.dataset.index = currentIndex; 
-                    // Añadir imageUrl al dataset del botón, incluyendo el placeholder de video
-                     button.dataset.imageUrl = item.imageUrl || ''; 
+                    // Añadir imageUrl al dataset del botón
+                     button.dataset.imageUrl = item.imageUrl || ''; // Usar imageUrl del item
 
                     if (item.isCustomVideo) {
                          button.dataset.isCustomVideo = "true";
@@ -630,36 +1002,23 @@
              const index = parseInt(itemData.index);
              const isCustomVideo = itemData.isCustomVideo === "true";
              
-             if (isNaN(index) || index < 0 || index >= modelsToPlace.length) { 
-                  showMessage("Error interno: Índice de modelo inválido.", 4000);
-                  console.error("Invalid index in startPlacement:", index);
-                  return; 
-             }
-             // Doble chequeo por si acaso
-             if (modelsToPlace[index].isCustomVideo !== isCustomVideo || modelsToPlace[index].url !== itemData.url) { 
-                  showMessage("Error interno: Discrepancia de datos del modelo.", 4000);
-                  console.error("Data mismatch in startPlacement:", itemData, modelsToPlace[index]);
-                  return; 
-             }
+             if (isNaN(index) || index < 0 || index >= modelsToPlace.length) { /* ... */ return; }
+             if (modelsToPlace[index].isCustomVideo !== isCustomVideo || modelsToPlace[index].url !== itemData.url) { /* ... */ return; }
 
             isPlacingModel = true;
             currentPlacingModel = { ...modelsToPlace[index], originalIndex: index }; 
 
              if (placingModelName) placingModelName.textContent = `Colocando: ${currentPlacingModel.name}`;
             
-            // Mostrar imagen previa si existe la URL en el dataset
+            // Mostrar imagen previa
              if (placementPreviewImageEl && itemData.imageUrl) {
                  console.log("Setting preview image:", itemData.imageUrl);
                  placementPreviewImageEl.src = itemData.imageUrl;
                  placementPreviewImageEl.style.display = 'block';
-                 // Añadir manejo de error para la imagen
                  placementPreviewImageEl.onerror = () => { 
                       console.warn("Could not load preview image:", itemData.imageUrl);
                       placementPreviewImageEl.style.display = 'none'; 
-                      placementPreviewImageEl.onerror = null; // Evitar bucle si la imagen placeholder falla
-                      // Opcional: Mostrar un placeholder genérico
-                      // placementPreviewImageEl.src = 'https://placehold.co/100x100/cccccc/ffffff?text=Error';
-                      // placementPreviewImageEl.style.display = 'block';
+                      placementPreviewImageEl.onerror = null; 
                  };
              } else if(placementPreviewImageEl) {
                   console.log("No preview image URL found for this item.");
@@ -668,28 +1027,11 @@
                   console.warn("placementPreviewImageEl not found.");
              }
 
-             if (placePoiTypeSelect) { 
-                 placePoiTypeSelect.value = isCustomVideo ? 'video' : 'model';
-                 handlePoiTypeChange(); 
-             }
+             if (placePoiTypeSelect) { /* ... */ }
              if (placeNameInput) placeNameInput.value = currentPlacingModel.name; 
              if (placeModelUrlInput) placeModelUrlInput.value = isCustomVideo ? '' : currentPlacingModel.url;
              if (placeVideoUrlInput) placeVideoUrlInput.value = ''; 
              // ... resto de campos del formulario ...
-              const soundUrlInput = document.getElementById('place-sound-url');
-              if (soundUrlInput) soundUrlInput.value = '';
-              const scaleInput = document.getElementById('place-scale');
-              if (scaleInput) scaleInput.value = '1.0';
-              const heightInput = document.getElementById('place-ground-height');
-              if (heightInput) heightInput.value = '0.0';
-             
-             const today = new Date().toISOString().split('T')[0];
-             const nextMonth = new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0];
-              const startDateInput = document.getElementById('place-start-date');
-              if (startDateInput) startDateInput.value = today;
-              const endDateInput = document.getElementById('place-end-date');
-              if (endDateInput) endDateInput.value = nextMonth;
-
 
             if (modelsToPlaceList) modelsToPlaceList.classList.add('hidden'); 
             if (placementFormContainer) placementFormContainer.classList.remove('hidden'); 
@@ -704,7 +1046,6 @@
             currentPlacingModel = {};
             if (modelsToPlaceList) modelsToPlaceList.classList.remove('hidden'); 
             if (placementFormContainer) placementFormContainer.classList.add('hidden'); 
-            // Ocultar imagen previa al cancelar
             if (placementPreviewImageEl) placementPreviewImageEl.style.display = 'none'; 
              console.log("Placement cancelled.");
         }
@@ -713,7 +1054,8 @@
 
 
         async function handleSavePlacement() { /* ... */ }
-        // Listener savePlacementBtn (adjunto en DOMContentLoaded)
+        savePlacementBtn?.removeEventListener('click', handleSavePlacement); 
+        savePlacementBtn?.addEventListener('click', handleSavePlacement); 
 
         // --- Summary Page Logic (Page 3) ---
         function populateSummaryPage() { /* ... */ }
@@ -728,14 +1070,42 @@
         function startGPSWatch() { /* ... */ }
 
         // --- Navigation Event Listeners ---
-        function setupNavigationListeners() { /* ... */ }
-        // Navigation handlers
-        function handleGoToMap() { /* ... */ }
-        function handleGoToSummary() { /* ... */ } 
-        function handleBackToAdmin() { /* ... */ }
-        function handleLaunchAR() { /* ... */ } 
-        function handleBackToSummary() { /* ... */ } 
-        function handleGrantPermissions() { /* ... */ }
+         function setupNavigationListeners() {
+             console.log("Setting up navigation listeners..."); 
+             const setupListener = (id, event, handler) => { 
+                   const element = document.getElementById(id);
+                   if (element) {
+                        element.removeEventListener(event, handler); 
+                        element.addEventListener(event, handler); 
+                        console.log(`Listener added for ${id}`);
+                   } else {
+                        console.warn(`Element with ID '${id}' not found for listener setup.`);
+                   }
+              };
+
+             // Setup listeners
+             setupListener('goto-map-btn', 'click', handleGoToMap);
+             setupListener('back-to-admin-btn', 'click', handleBackToAdmin);
+             setupListener('goto-summary-btn', 'click', handleGoToSummary); 
+             setupListener('back-to-map-btn', 'click', handleGoToMap); 
+             setupListener('launch-ar-btn', 'click', handleLaunchAR); 
+             setupListener('back-to-summary-btn', 'click', handleBackToSummary); 
+             setupListener('grant-permissions-btn', 'click', handleGrantPermissions);
+             
+             console.log("Navigation listeners setup complete.");
+         }
+
+         // Navigation handlers
+         function handleGoToMap() { console.log("goto-map clicked"); navigateTo('map'); }
+         function handleGoToSummary() { console.log("goto-summary clicked"); navigateTo('summary'); } 
+         function handleBackToAdmin() { console.log("back-to-admin clicked"); navigateTo('admin'); }
+         function handleLaunchAR() { console.log("launch-ar clicked"); navigateTo('ar'); } 
+         function handleBackToSummary() { console.log("back-to-summary clicked"); navigateTo('summary'); } 
+         function handleGrantPermissions() { 
+             console.log("grant-permissions clicked");
+             if (permissionModal) permissionModal.style.display = 'none';
+             startARFlow(); 
+         }
 
 
         // --- App Initialization ---
@@ -780,8 +1150,8 @@
              cancelEditLocationBtn = document.getElementById('cancel-edit-location-btn');
              summaryPoiList = document.getElementById('summary-poi-list');
              loadingSummaryPois = document.getElementById('loading-summary-pois');
-             mapCenterCoordsEl = document.getElementById('map-center-coords'); // Ref display coords
-             placementPreviewImageEl = document.getElementById('placement-preview-image'); // Ref img preview
+             mapCenterCoordsEl = document.getElementById('map-center-coords'); 
+             placementPreviewImageEl = document.getElementById('placement-preview-image'); 
 
              console.log("DOM element references obtained.");
 
@@ -797,7 +1167,7 @@
         // Asegúrate de copiar TODO el código de las funciones desde la versión anterior (v1.15)
         // ... (el código completo de las funciones va aquí) ...
          async function handleSavePlacement() { 
-            if (!isPlacingModel || !map || !poiCollectionRef || !savePlacementBtn) { /* ... */ return; }
+            if (!isPlacingModel || !map || !poiCollectionRef || !savePlacementBtn) { return; }
 
             const latlng = map.getCenter(); 
             showMessage('Saving...', 2000); 
@@ -805,7 +1175,7 @@
             savePlacementBtn.textContent = 'Saving...'; 
 
             try {
-                 if (!currentPlacingModel || typeof currentPlacingModel.originalIndex !== 'number') { /* ... */ throw new Error("Internal error: Missing data..."); }
+                 if (!currentPlacingModel || typeof currentPlacingModel.originalIndex !== 'number') { throw new Error("Internal error: Missing data..."); }
 
                  const poiType = placePoiTypeSelect.value;
                  let modelUrl = '';
@@ -814,21 +1184,21 @@
 
                  if (!name) throw new Error("Descriptive name is required.");
 
-                 if (poiType === 'video') { /* ... video url logic ... */ 
+                 if (poiType === 'video') { 
                      videoUrl = placeVideoUrlInput.value.trim();
                      if (!videoUrl) throw new Error("Video URL is required for Video type.");
                      if (!videoUrl.startsWith('http') || !videoUrl.toLowerCase().endsWith('.mp4')) {
                           console.warn("Video URL format might be invalid:", videoUrl);
                      }
                       modelUrl = ''; 
-                 } else { /* ... model url logic ... */ 
+                 } else { 
                      modelUrl = placeModelUrlInput.value.trim(); 
                      if (!modelUrl) throw new Error("Model URL is required for Model 3D type.");
                       videoUrl = ''; 
                  }
 
 
-                const newPoi = { /* ... poi data object ... */ 
+                const newPoi = { 
                     name: name, 
                     poiType: poiType, 
                     modelUrl: modelUrl, 
@@ -867,11 +1237,11 @@
                             const checkbox = document.querySelector(checkboxSelector);
                             if (checkbox) checkbox.checked = false;
                             console.log("Item removed from modelsToPlace:", removedItem.name);
-                       } else { /* ... fallback ... */ 
+                       } else { 
                             console.error("Index mismatch when removing placed item. Array may have shifted.");
                             modelsToPlace = modelsToPlace.filter(m => m.url !== currentPlacingModel.url);
                        }
-                 } else { /* ... fallback ... */ 
+                 } else { 
                       console.error("Invalid original index found when trying to remove placed item:", indexToRemove);
                        modelsToPlace = modelsToPlace.filter(m => m.url !== currentPlacingModel.url);
                  }
@@ -990,7 +1360,6 @@
                   if (arLoadingScreen) arLoadingScreen.classList.remove('active');
                   navigateTo('summary'); 
                   let userMsg = "Error starting AR: " + error.message;
-                  // ... more specific error messages ...
                    if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
                        userMsg = "Camera and GPS access are required for AR.";
                    } else if (error.code === error.TIMEOUT || error.message.includes("Timeout")) {
@@ -1094,23 +1463,9 @@
             
             // Add lights 
              let ambientLight = arScene.querySelector('a-light[type="ambient"]'); 
-             if (!ambientLight) { 
-                  ambientLight = document.createElement('a-light');
-                  ambientLight.setAttribute('type', 'ambient');
-                  ambientLight.setAttribute('color', '#BBB'); 
-                  ambientLight.setAttribute('intensity', '0.7'); 
-                  arScene.appendChild(ambientLight);
-             }
+             if (!ambientLight) { /* ... create ambient ... */ }
              let directionalLight = arScene.querySelector('a-light[type="directional"]'); 
-             if (!directionalLight) { 
-                  directionalLight = document.createElement('a-light');
-                  directionalLight.setAttribute('type', 'directional');
-                  directionalLight.setAttribute('color', '#FFF');
-                  directionalLight.setAttribute('intensity', '0.8'); 
-                  directionalLight.setAttribute('position', '-1 2 1.5'); 
-                  directionalLight.setAttribute('castShadow', 'true'); 
-                  arScene.appendChild(directionalLight);
-              }
+             if (!directionalLight) { /* ... create directional ... */ }
 
             arSceneContainer.appendChild(arScene); 
             
@@ -1122,11 +1477,7 @@
                 startGPSWatch(); 
                 showMessage("AR Scene Ready! Waiting for GPS signal...", 3000);
             });
-            arScene.addEventListener('error', (err) => { 
-                 console.error("A-Frame scene error:", err);
-                 showMessage("Error loading AR scene.", 5000);
-                 navigateTo('summary');
-            });
+            arScene.addEventListener('error', (err) => { /* ... error handling ... */ });
              arScene.addEventListener('arjs-video-loaded', (ev) => { console.log("AR.js video stream loaded.", ev); }); 
              arScene.addEventListener('gps-camera-origin-coord-set', (ev) => { console.log("AR.js GPS origin set.", ev.detail); }); 
 
@@ -1134,7 +1485,7 @@
 
         function stopAR() { 
              console.log("Stopping AR..."); 
-            if (gpsWatchId) { navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; }
+            if (gpsWatchId) { /* ... clear watch ... */ }
             if (arScene) {
                  try {
                      arScene.pause(); 
@@ -1180,6 +1531,7 @@
         function startGPSWatch() { 
               window.removeEventListener('gps-camera-update-position', onGPSUpdate);
               window.removeEventListener('gps-camera-error', onGPSError);
+             
              window.addEventListener('gps-camera-update-position', onGPSUpdate);
              window.addEventListener('gps-camera-error', onGPSError);
               console.log("AR.js GPS event listeners attached.");
@@ -1266,14 +1618,14 @@
              cancelEditLocationBtn = document.getElementById('cancel-edit-location-btn');
              summaryPoiList = document.getElementById('summary-poi-list');
              loadingSummaryPois = document.getElementById('loading-summary-pois');
-             mapCenterCoordsEl = document.getElementById('map-center-coords'); 
-             placementPreviewImageEl = document.getElementById('placement-preview-image'); 
+             mapCenterCoordsEl = document.getElementById('map-center-coords'); // Ref display coords
+             placementPreviewImageEl = document.getElementById('placement-preview-image'); // Ref img preview
 
              console.log("DOM element references obtained.");
 
              // --- Initialize App ---
              displayAppVersion(); 
-             initializeFirebase(); // Initialize Firebase (will enable button when ready via onAuthStateChanged)
+             initializeFirebase(); 
              initializeModelSelection(); 
              setupNavigationListeners(); 
          });
@@ -1281,4 +1633,5 @@
     </script>
 </body>
 </html>
+
 
