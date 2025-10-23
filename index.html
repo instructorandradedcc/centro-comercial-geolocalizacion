@@ -362,7 +362,7 @@
 
 
         // --- Versión de la App ---
-        const APP_VERSION = '1.11'; // Robustez en inicialización Firebase
+        const APP_VERSION = '1.14'; // Limpieza de config firebase pegada
 
         // --- Modelos de ECOPIENSA ---
         const GITHUB_BASE_URL = 'https://raw.githubusercontent.com/instructorandradedcc/7777ar/main/asetss/modelss/';
@@ -378,10 +378,25 @@
         const CUSTOM_VIDEO_PLACEHOLDER = { name: "Video Personalizado", url: "CUSTOM_VIDEO", isCustomVideo: true };
 
         // --- Configuración de Firebase ---
-        // Se asume que estas variables son inyectadas por el entorno
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const rawFirebaseConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+        // Se asume que appId y initialAuthToken son inyectadas por el entorno si existen
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; // Usar un default si no está
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // **¡IMPORTANTE! PEGA TU CONFIGURACIÓN DE FIREBASE AQUÍ**
+        // Reemplaza este objeto con el `firebaseConfig` de tu proyecto Firebase
+        // Lo encuentras en Project Settings > General > Your apps > Web app > SDK setup and configuration > Config
+        const firebaseConfig = {
+          apiKey: "AIzaSyBkxP7vqrVZMRhl-vUpHMMKjj5aIujDQ3k",
+          authDomain: "centro-comercial-1ea64.firebaseapp.com",
+          projectId: "centro-comercial-1ea64",
+          storageBucket: "centro-comercial-1ea64.appspot.com", 
+          messagingSenderId: "667808330264",
+          appId: "1:667808330264:web:9718955b58aba4359b096d",
+          measurementId: "G-3ZPG0Q8FL6"
+        };
+        // **FIN DE LA SECCIÓN PARA PEGAR CONFIGURACIÓN**
+
+        // Se eliminaron las líneas duplicadas de import y getAnalytics de aquí
 
         let db, auth, userId, poiCollectionRef;
         let map;
@@ -478,52 +493,40 @@
 
         // --- Firebase Logic ---
         async function initializeFirebase() { 
-            console.log("Initializing Firebase..."); 
-            // Mensaje inicial más específico
-            if (loadingPois) loadingPois.textContent = "Validando configuración de Firebase...";
+            console.log("Initializing Firebase with provided config..."); 
+            if (loadingPois) loadingPois.textContent = "Inicializando conexión Firebase...";
             if (gotoMapButton) gotoMapButton.disabled = true; 
 
-            let config;
-            try {
-                 // 1. Validar y Parsear Configuración
-                 console.log("Raw Firebase Config:", rawFirebaseConfig); // Log raw config
-                 if (!rawFirebaseConfig || rawFirebaseConfig === '{}') {
-                      throw new Error("Firebase config (__firebase_config) is missing or empty.");
-                 }
-                 config = JSON.parse(rawFirebaseConfig);
-                 console.log("Firebase config parsed successfully.");
-                 // Opcional: Validar campos mínimos de config si es necesario
-                 if (!config.apiKey || !config.projectId) {
-                      console.warn("Firebase config might be missing apiKey or projectId.");
-                 }
-            } catch (configError) {
-                 console.error("Config Parse Error:", configError);
+            // Validar la configuración hardcoded (básico)
+            if (!firebaseConfig || !firebaseConfig.apiKey || !firebaseConfig.projectId) {
+                 console.error("Firebase Config Error: La configuración manual 'firebaseConfig' es inválida o incompleta.");
                  firebaseReady = false;
                  if (gotoMapButton) gotoMapButton.disabled = true;
-                 const errorMsg = `Error fatal: Configuración de Firebase inválida (${configError.message}).`;
+                 const errorMsg = "Error fatal: Configuración de Firebase inválida. Revisa el código.";
                  if(loadingPois) loadingPois.textContent = errorMsg;
                  showMessage(errorMsg, 8000);
                  return; // Detener inicialización
             }
             
             try {
-                 // 2. Inicializar App Firebase
-                 if (loadingPois) loadingPois.textContent = "Inicializando conexión Firebase...";
-                 console.log("Calling initializeApp...");
-                 const app = initializeApp(config);
+                 // 1. Inicializar App Firebase con la config hardcoded
+                 console.log("Calling initializeApp with manual config...");
+                 const app = initializeApp(firebaseConfig);
                  console.log("Firebase App initialized.");
                  db = getFirestore(app);
                  auth = getAuth(app);
                  console.log("Firestore and Auth services obtained.");
-                 setLogLevel('Debug'); // Habilitar logs detallados de Firestore
+                 setLogLevel('Debug'); 
                  
-                 // 3. Configurar Listener de Autenticación
+                 // 2. Configurar Listener de Autenticación
                  onAuthStateChanged(auth, async (user) => {
                      console.log("Auth state changed. User:", user ? user.uid : 'null');
                      if (user) {
                          userId = user.uid;
                          console.log('Firebase User Authenticated:', userId);
-                         const collectionPath = `/artifacts/${appId}/public/data/pois`;
+                         // Usar appId de la config manual si el inyectado no está disponible
+                         const currentAppId = appId === 'default-app-id' ? (firebaseConfig.appId || 'default-app-id') : appId; 
+                         const collectionPath = `/artifacts/${currentAppId}/public/data/pois`;
                          poiCollectionRef = collection(db, collectionPath);
                          console.log('POI Collection configured:', collectionPath);
                          
@@ -532,8 +535,8 @@
                               gotoMapButton.disabled = false; 
                               console.log("GoToMap button enabled.");
                          }
-                         if (loadingPois && loadingPois.textContent.startsWith("Conectando")) { // Evitar sobreescribir errores
-                              loadingPois.textContent = "Conexión exitosa. Cargando POIs..."; // Indicar que la conexión fue buena
+                         if (loadingPois && loadingPois.textContent.startsWith("Conectando")) { 
+                              loadingPois.textContent = "Conexión exitosa. Cargando POIs..."; 
                          }
                          showMessage("Conectado a la base de datos.", 2000); 
                          
@@ -551,13 +554,15 @@
                  });
                  console.log("Auth state listener attached.");
 
-                 // 4. Intentar Iniciar Sesión
+                 // 3. Intentar Iniciar Sesión
                  try {
+                     // Priorizar token inyectado si existe
                      if (initialAuthToken) {
                           console.log("Attempting sign in with custom token...");
                          await signInWithCustomToken(auth, initialAuthToken);
                          console.log("Signed in with custom token.");
                      } else {
+                          // Si no hay token, usar anónimo (común para GitHub Pages)
                           console.log("Attempting anonymous sign in...");
                          await signInAnonymously(auth);
                           console.log("Signed in anonymously.");
@@ -572,11 +577,11 @@
                  }
 
             } catch (initError) {
-                // Capturar error de inicialización general de Firebase (initializeApp, getFirestore, getAuth)
+                // Capturar error de inicialización general de Firebase
                 console.error("Firebase Init Error:", initError);
                 firebaseReady = false; 
                 if (gotoMapButton) gotoMapButton.disabled = true;
-                const errorMsg = `Error fatal al inicializar Firebase: ${initError.message}. Recarga la página.`;
+                const errorMsg = `Error fatal al inicializar Firebase: ${initError.message}. Verifica la configuración manual.`;
                 if(loadingPois) loadingPois.textContent = errorMsg;
                  showMessage(errorMsg, 8000);
             }
@@ -1700,5 +1705,4 @@
     </script>
 </body>
 </html>
-
 
