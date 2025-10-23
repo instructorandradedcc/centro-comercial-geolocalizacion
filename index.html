@@ -1,623 +1,316 @@
 <!DOCTYPE html>
-<html lang="es" class="scroll-smooth">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Propuesta AR - Soluciones de Realidad Aumentada</title>
-    
-    <!-- Tailwind CSS -->
+    <title>Admin AR - Centro Comercial</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Favicon -->
-    <link rel="icon" href="https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/favicon.ico" type="image/x-icon">
-    
-    <!-- Google Fonts: Poppins -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-    <!-- Estilos personalizados -->
     <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #0a192f;
-            color: #ccd6f6;
-        }
-        .nav-link {
-            position: relative;
-            transition: color 0.3s;
-            cursor: pointer;
-        }
-        .nav-link::after {
-            content: '';
-            position: absolute;
-            width: 0;
-            height: 2px;
-            bottom: -4px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #64ffda;
-            transition: width 0.3s ease-in-out;
-        }
-        .nav-link:hover, .nav-link.active {
-            color: #64ffda;
-        }
-        .nav-link.active::after {
-            width: 100%;
-        }
-
-        /* VIDEO DE FONDO SIN RECORTE - FIJO DEBAJO DEL HEADER */
-        .fullscreen-video-bg {
-            position: fixed;
-            top: 5rem; /* = h-20 del header */
-            left: 0;
-            width: 100%;
-            height: calc(100vh - 5rem);
-            object-fit: cover;
-            z-index: -1;
-            filter: brightness(0.3);
-        }
-
-        .glass-card {
-            background: rgba(17, 34, 64, 0.6);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .image-viewer-modal {
-            transform: scale(0.95);
-            opacity: 0;
-            transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28), opacity 0.3s ease-in-out;
-            pointer-events: none;
-        }
-        .image-viewer-modal.open {
-            transform: scale(1);
-            opacity: 1;
-            pointer-events: all;
-        }
-        .viewer-img-content {
-            cursor: grab;
-            transition: transform 0.2s ease-out;
-        }
-        .viewer-img-content.dragging {
-            cursor: grabbing;
-        }
+        body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="antialiased">
+<body class="bg-gray-100 text-gray-900">
 
-    <!-- ===== HEADER FIJO ===== -->
-    <header id="header" class="bg-slate-900/80 backdrop-blur-sm shadow-md fixed top-0 w-full z-30 transition-all duration-300">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-20">
-                <div class="flex items-center">
-                    <img src="https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/logofundacion.jpg" alt="Logo" class="h-12 w-12 rounded-full border-2 border-cyan-400">
-                    <span class="text-white font-bold text-2xl ml-4">Propuesta AR</span>
+    <div class="container mx-auto p-6 max-w-4xl">
+        <h1 class="text-3xl font-bold text-center text-blue-700 mb-8">Panel de Administración AR</h1>
+
+        <!-- Formulario para agregar nuevos Puntos de Interés (POI) -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-2xl font-semibold mb-4">Agregar Nuevo Punto de Interés</h2>
+            <form id="poi-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <div>
+                    <label for="poi-name" class="block text-sm font-medium text-gray-700">Nombre del POI</label>
+                    <input type="text" id="poi-name" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="Ej: Santa en Trineo">
                 </div>
-                <nav class="hidden md:flex items-baseline space-x-8">
-                    <a data-view="view-main" data-scroll="#inicio" class="nav-link text-sm font-medium">Inicio</a>
-                    <a data-view="view-main" data-scroll="#servicios" class="nav-link text-sm font-medium">Servicios</a>
-                    <a data-view="view-demo" class="nav-link text-sm font-medium">Demo</a>
-                    <a data-view="view-main" data-scroll="#arquitectura" class="nav-link text-sm font-medium">Arquitectura</a>
-                    <a data-view="view-main" data-scroll="#contacto" class="nav-link text-sm font-medium">Contacto</a>
-                </nav>
-                <div class="flex md:hidden">
-                    <button type="button" id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white focus:outline-none">
-                        <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
-                        <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+
+                <div>
+                    <label for="model-quick-select" class="block text-sm font-medium text-gray-700">Selección Rápida (ECOPIENSA)</label>
+                    <select id="model-quick-select" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                        <option value="">-- Opcional: Seleccionar modelo --</option>
+                        <!-- Opciones se agregarán con JS -->
+                    </select>
+                </div>
+
+                <div>
+                    <label for="poi-model-url" class="block text-sm font-medium text-gray-700">URL del Modelo (.glb) (o rellenar arriba)</label>
+                    <input type="url" id="poi-model-url" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="https://.../modelo.glb">
+                </div>
+
+                <div>
+                    <label for="poi-lat" class="block text-sm font-medium text-gray-700">Latitud</label>
+                    <input type="number" step="any" id="poi-lat" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="4.0950">
+                </div>
+
+                <div>
+                    <label for="poi-lon" class="block text-sm font-medium text-gray-700">Longitud</label>
+                    <input type="number" step="any" id="poi-lon" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="-76.1950">
+                </div>
+
+                <div>
+                    <label for="poi-scale" class="block text-sm font-medium text-gray-700">Escala (Número)</label>
+                    <input type="number" step="0.1" id="poi-scale" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" value="1.0">
+                </div>
+
+                <div>
+                    <label for="poi-sound-url" class="block text-sm font-medium text-gray-700">URL de Sonido (Opcional, .mp3)</label>
+                    <input type="url" id="poi-sound-url" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="https://.../jinglebells.mp3">
+                </div>
+
+                <div>
+                    <label for="poi-start-date" class="block text-sm font-medium text-gray-700">Fecha de Inicio (Activación)</label>
+                    <input type="date" id="poi-start-date" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                </div>
+
+                <div>
+                    <label for="poi-end-date" class="block text-sm font-medium text-gray-700">Fecha de Fin (Desactivación)</label>
+                    <input type="date" id="poi-end-date" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                </div>
+
+                <div class="md:col-span-2 text-center">
+                    <button type="submit" id="submit-btn" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300">
+                        Guardar Punto de Interés
                     </button>
                 </div>
+            </form>
+        </div>
+
+        <!-- Lista de POIs existentes -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold mb-4">Puntos de Interés Activos</h2>
+            <div id="poi-list-container" class="space-y-4">
+                <p id="loading-pois" class="text-gray-500">Cargando puntos...</p>
+                <!-- Los POIs se insertarán aquí dinámicamente -->
             </div>
         </div>
-        <!-- Menú Móvil -->
-        <div class="md:hidden hidden" id="mobile-menu">
-            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                <a data-view="view-main" data-scroll="#inicio" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Inicio</a>
-                <a data-view="view-main" data-scroll="#servicios" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Servicios</a>
-                <a data-view="view-demo" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Demo</a>
-                <a data-view="view-main" data-scroll="#arquitectura" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Arquitectura</a>
-                <a data-view="view-main" data-scroll="#contacto" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Contacto</a>
-            </div>
-        </div>
-    </header>
 
-    <main>
-        <!-- VISTA PRINCIPAL -->
-        <div id="view-main">
-            <!-- ===== SECCIÓN HÉROE CON VIDEO DE FONDO COMPLETO ===== -->
-            <section id="inicio" class="relative min-h-screen text-center overflow-hidden">
-                <!-- Video de fondo fijo debajo del header -->
-                <video autoplay muted loop playsinline class="fullscreen-video-bg">
-                    <source src="https://cdn.jsdelivr.net/gh/instructorandradedcc/propuesta-AR@main/asetss/imagenes/pagina-propuestas-ar/Animaci%C3%B3n_de_Realidad_Aumentada_Futurista.mp4" type="video/mp4">
-                </video>
+    </div>
 
-                <!-- Contenido centrado -->
-                <div class="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 text-center">
-                    <div>
-                        <h1 class="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white leading-tight mb-4">
-                            Transformando la Realidad <br/> con <span class="text-cyan-400">Tecnología Inmersiva</span>
-                        </h1>
-                        <p class="max-w-3xl mx-auto text-lg md:text-xl text-gray-300 mb-8">
-                            Diseñamos experiencias de Realidad Aumentada a medida que revolucionan la educación, la publicidad y la industria.
-                        </p>
-                        <div class="space-x-4">
-                            <a data-scroll="#servicios" href="#" class="inline-block bg-cyan-500 hover:bg-cyan-600 text-gray-900 font-bold py-3 px-8 rounded-lg text-lg transition-transform duration-300 transform hover:scale-105 shadow-lg">
-                                Nuestros Servicios
-                            </a>
-                            <a data-view="view-demo" href="#" class="inline-block bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-lg text-lg transition-transform duration-300 transform hover:scale-105 shadow-lg">
-                                Probar Demo
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </section>
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Importa las funciones necesarias de Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            doc, 
+            deleteDoc, 
+            onSnapshot, 
+            query,
+            setLogLevel 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-            <!-- ===== SERVICIOS ===== -->
-            <section id="servicios" class="py-24 bg-slate-900">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="text-center mb-16">
-                        <h2 class="text-4xl font-bold text-white">Soluciones de Realidad Aumentada a Medida</h2>
-                        <p class="mt-4 text-lg text-gray-400">Creamos el futuro interactivo para su sector.</p>
-                    </div>
-                    <div class="grid md:grid-cols-2 gap-10">
-                        <a data-view="view-educacion" href="#" class="block glass-card rounded-xl p-8 transform hover:-translate-y-2 transition-transform duration-300">
-                            <h3 class="text-2xl font-bold text-white mb-4">AR para Educación</h3>
-                            <p class="text-gray-300">Transformamos libros y materiales de estudio en experiencias 3D interactivas. Fomentamos un aprendizaje inmersivo y memorable. Haga clic para ver ejemplos.</p>
-                        </a>
-                        <a data-view="view-empresas" href="#" class="block glass-card rounded-xl p-8 transform hover:-translate-y-2 transition-transform duration-300">
-                            <h3 class="text-2xl font-bold text-white mb-4">AR para Empresas</h3>
-                            <p class="text-gray-300">Revolucione su marketing con tarjetas, folletos y pancartas interactivas. Capture la atención de sus clientes. Haga clic para ver ejemplos.</p>
-                        </a>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ===== NUEVA SECCIÓN: BANNERS DE INSTAGRAM ===== -->
-            <section id="instagram-banners" class="py-16 bg-slate-800/50">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="text-center mb-12">
-                        <h2 class="text-3xl font-bold text-white">Explora Nuestros Proyectos en Instagram</h2>
-                        <p class="mt-2 text-lg text-gray-400">Descubre cómo estamos transformando la educación y las empresas.</p>
-                    </div>
-                    <div class="grid md:grid-cols-2 gap-8 items-center">
-                        <!-- Banner 1: Educación -->
-                        <a href="#" data-view="view-educacion" class="block group relative overflow-hidden rounded-lg shadow-xl transform hover:scale-105 transition-all duration-300">
-                            <img src="https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/pagina-propuestas-ar/insragram.png" alt="Proyectos de Educación en Instagram" class="w-full h-auto object-cover">
-                            <div class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                <span class="text-white text-2xl font-bold">Ver Proyectos de Educación</span>
-                            </div>
-                        </a>
-
-                        <!-- Banner 2: Empresas -->
-                        <a href="#" data-view="view-empresas" class="block group relative overflow-hidden rounded-lg shadow-xl transform hover:scale-105 transition-all duration-300">
-                            <img src="https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/pagina-propuestas-ar/instagram2.png" alt="Proyectos de Empresas en Instagram" class="w-full h-auto object-cover">
-                            <div class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                <span class="text-white text-2xl font-bold">Ver Proyectos de Empresas</span>
-                            </div>
-                        </a>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ===== ARQUITECTURA ===== -->
-            <section id="arquitectura" class="py-24">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                    <h2 class="text-4xl font-bold text-white">AR e IA para Arquitectura</h2>
-                    <p class="mt-4 text-lg text-gray-400 max-w-3xl mx-auto">Próximamente: una plataforma revolucionaria para visualizar proyectos sobre el terreno y realizar seguimiento de obras en tiempo real.</p>
-                </div>
-            </section>
-
-            <!-- ===== CONTACTO ===== -->
-            <section id="contacto" class="py-24 bg-slate-900">
-                <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="text-center mb-16">
-                        <h2 class="text-4xl font-bold text-white">Hablemos de su Proyecto</h2>
-                        <p class="mt-4 text-lg text-gray-400">¿Tiene una idea? Contáctenos para una consulta gratuita.</p>
-                    </div>
-                    
-                    <!-- FORMULARIO ACTUALIZADO CON NUEVO ENDPOINT DE FORMSPREE -->
-                    <form action="https://formspree.io/f/xnngkpkw" method="POST" class="space-y-6">
-                        <div>
-                            <label for="nombre" class="block text-sm font-medium text-gray-300 mb-2">Nombre:</label>
-                            <input type="text" id="nombre" name="nombre" required class="block w-full bg-slate-800 border-slate-700 text-white rounded-md p-3 focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
-                        </div>
-                        
-                        <div>
-                            <label for="email" class="block text-sm font-medium text-gray-300 mb-2">Correo:</label>
-                            <input type="email" id="email" name="email" required class="block w-full bg-slate-800 border-slate-700 text-white rounded-md p-3 focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
-                        </div>
-                        
-                        <div>
-                            <label for="mensaje" class="block text-sm font-medium text-gray-300 mb-2">Solicitud/Pregunta:</label>
-                            <textarea id="mensaje" name="mensaje" rows="6" required class="block w-full bg-slate-800 border-slate-700 text-white rounded-md p-3 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"></textarea>
-                        </div>
-                        
-                        <div class="text-center">
-                            <button type="submit" class="inline-block bg-cyan-500 hover:bg-cyan-600 text-gray-900 font-bold py-3 px-12 rounded-lg text-lg transition-colors duration-300">Enviar</button>
-                        </div>
-                    </form>
-                </div>
-            </section>
-
-            <!-- ===== NUEVA SECCIÓN: INFORMACIÓN ADICIONAL ===== -->
-            <section id="info-fundacion" class="py-24 bg-slate-800">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="text-center mb-16">
-                        <h2 class="text-4xl font-bold text-white">Conéctate con la Fundación</h2>
-                        <p class="mt-4 text-lg text-gray-400">Encuentra más formas de colaborar y seguir nuestra misión social.</p>
-                    </div>
-                    <div class="grid md:grid-cols-3 gap-8 items-center text-center">
-                        <!-- Columna 1: Contacto Directo -->
-                        <div class="glass-card rounded-xl p-8 flex flex-col items-center justify-center h-full">
-                            <h3 class="text-2xl font-bold text-white mb-6">Contacto Directo</h3>
-                            <div class="space-y-4 w-full">
-                                <!-- Email -->
-                                <a href="mailto:fundacionecopiensaevolution@gmail.com" class="flex items-center justify-center text-gray-300 hover:text-cyan-400 transition-colors p-2 rounded-lg hover:bg-slate-700/50">
-                                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                                    <span class="text-sm">fundacionecopiensa@gmail.com</span>
-                                </a>
-                                <!-- WhatsApp -->
-                                <a href="https://wa.me/573222070501" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center text-gray-300 hover:text-cyan-400 transition-colors p-2 rounded-lg hover:bg-slate-700/50">
-                                    <svg class="w-6 h-6 mr-3" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.149-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 2.475 3.902c.348.228.622.458.835.627.543.424 1.064.646 1.571.758.664.145 1.27.125 1.748.076.533-.054 1.639-.669 1.868-1.316.23-.647.23-1.203.162-1.317-.069-.115-.267-.173-.548-.322m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-                                    <span class="text-sm">+57 322 207 0501</span>
-                                </a>
-                            </div>
-                        </div>
-                        <!-- Columna 2: QR Code -->
-                        <div class="glass-card rounded-xl p-8 flex flex-col items-center justify-center h-full">
-                            <h3 class="text-2xl font-bold text-white mb-6">Escanea el QR</h3>
-                            <img src="https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/pagina-propuestas-ar/f.ecopiensa_evolution_qr.png" alt="QR Código de la Fundación Ecopiensa Evolution" class="w-48 h-48 rounded-lg shadow-lg object-cover">
-                            <p class="mt-4 text-sm text-gray-400">Conoce más sobre la fundación</p>
-                        </div>
-                        <!-- Columna 3: Instagram -->
-                        <div class="glass-card rounded-xl p-8 flex flex-col items-center justify-center h-full">
-                            <h3 class="text-2xl font-bold text-white mb-6">Síguenos en Instagram</h3>
-                            <a href="https://www.instagram.com/f.ecopiensa_evolution/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-cyan-400 hover:text-cyan-300 transition-colors text-lg font-medium">
-                                <svg class="w-8 h-8 mr-3" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zM5.838 12a6.162 6.162 0 1112.324 0 6.162 6.162 0 01-12.324 0zM12 16a4 4 0 110-8 4 4 0 010 8zm4.965-10.405a1.44 1.44 0 112.881.001 1.44 1.44 0 01-2.881-.001z"/></svg>
-                                <span>@f.ecopiensa_evolution</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-        </div>
-
-        <!-- VISTA EDUCACIÓN -->
-        <div id="view-educacion" class="hidden pt-20">
-            <section class="py-16 sm:py-24">
-                <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="text-center mb-16">
-                        <h1 class="text-4xl sm:text-5xl font-bold text-white">AR para Educación</h1>
-                        <p class="mt-4 text-lg text-gray-400 max-w-3xl mx-auto">Creamos soluciones para <span class="text-cyan-400 font-semibold">colegios y universidades</span>, convirtiendo materiales de estudio en experiencias vivas, interactivas e inolvidables.</p>
-                        <button data-view="view-main" data-scroll="#servicios" class="mt-8 text-cyan-400 hover:text-cyan-300">&larr; Volver a Servicios</button>
-                    </div>
-
-                    <!-- Compromiso Social -->
-                    <div class="mb-16">
-                        <div class="glass-card rounded-xl p-8 border-l-4 border-cyan-400">
-                            <h2 class="text-3xl font-bold text-white mb-4">Nuestro Compromiso Social</h2>
-                            <p class="text-lg text-gray-300 mb-4">
-                                Creemos en el poder de la educación. Por eso, con la <span class="font-semibold text-white">Fundación Ecopiensa Evolution</span>, nos comprometemos a que por cada 5 colegios que adquieran un modelo de Realidad Aumentada, donaremos un modelo educativo completo a un colegio de escasos recursos.
-                            </p>
-                            <p class="text-lg text-cyan-400 font-semibold">
-                                ¡Para lograr esta meta, requerimos el apoyo de todos con sus compras y pedidos!
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <!-- Video Educación -->
-                    <div class="mb-16">
-                        <h2 class="text-3xl font-bold text-cyan-400 mb-4 text-center">Video de Muestra: Sistema Solar AR</h2>
-                        <div class="aspect-video bg-slate-800 rounded-lg overflow-hidden shadow-lg">
-                            <video controls muted loop class="w-full h-full object-cover">
-                                <source src="https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/pagina-propuestas-ar/educacion/solar-AR.mp4" type="video/mp4">
-                                Su navegador no soporta el tag de video.
-                            </video>
-                        </div>
-                    </div>
-
-                    <!-- Galería Educación -->
-                    <div class="space-y-12">
-                        <h2 class="text-3xl font-bold text-cyan-400 mb-4 text-center">Galería de Ejemplos Educativos</h2>
-                        <p class="text-lg text-gray-300 mb-6 text-center">Explore cómo la Realidad Aumentada puede transformar el aprendizaje. Haga clic en una imagen para verla.</p>
-                        <div id="education-gallery" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
-                    </div>
-
-                    <!-- ===== BLOQUE DE INSTAGRAM PARA EDUCACIÓN (SIN ENLACE) ===== -->
-                    <div class="mt-16 text-center">
-                        <p class="text-lg text-cyan-400 font-semibold mb-4">Síguenos en Instagram para más contenido educativo</p>
-                        <div class="inline-block transform hover:scale-105 transition-transform duration-300">
-                            <img src="https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/pagina-propuestas-ar/insragram.png" alt="Síguenos en Instagram - Propuesta AR Educación" class="w-64 md:w-80 rounded-lg shadow-lg object-cover">
-                        </div>
-                        <p class="mt-4 text-sm text-gray-400">Descubre más ejemplos y novedades</p>
-                    </div>
-                </div>
-            </section>
-        </div>
-
-        <!-- VISTA EMPRESAS -->
-        <div id="view-empresas" class="hidden pt-20">
-            <section class="py-16 sm:py-24">
-                <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                     <div class="text-center mb-16">
-                        <h1 class="text-4xl sm:text-5xl font-bold text-white">AR para Empresas</h1>
-                        <p class="mt-4 text-lg text-gray-400 max-w-3xl mx-auto">Cree campañas de marketing y materiales que sus clientes no solo verán, sino que experimentarán.</p>
-                        <button data-view="view-main" data-scroll="#servicios" class="mt-8 text-cyan-400 hover:text-cyan-300">&larr; Volver a Servicios</button>
-                    </div>
-
-                    <!-- Video Empresas -->
-                    <div class="mb-16">
-                        <h2 class="text-3xl font-bold text-cyan-400 mb-4 text-center">Marketing Interactivo</h2>
-                         <div class="aspect-video bg-slate-800 rounded-lg overflow-hidden shadow-lg">
-                            <video controls muted loop class="w-full h-full object-cover">
-                                <source src="https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/pagina-propuestas-ar/Animaci%C3%B3n_de_Hombre_y_Luna_M%C3%A1gica.mp4" type="video/mp4">
-                                Su navegador no soporta el tag de video.
-                            </video>
-                        </div>
-                    </div>
-
-                    <!-- Galería Empresas -->
-                    <div class="space-y-12">
-                        <h2 class="text-3xl font-bold text-cyan-400 mb-4 text-center">Galería de Ejemplos Comerciales</h2>
-                        <p class="text-lg text-gray-300 mb-6 text-center">Vea cómo la AR puede dar vida a productos, empaques y publicidad. Haga clic en una imagen para verla.</p>
-                        <div id="empresas-gallery" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
-                    </div>
-
-                    <!-- ===== BLOQUE DE INSTAGRAM PARA EMPRESAS (SIN ENLACE) ===== -->
-                    <div class="mt-16 text-center">
-                        <p class="text-lg text-cyan-400 font-semibold mb-4">Impulsa tu marca en Instagram</p>
-                        <div class="inline-block transform hover:scale-105 transition-transform duration-300">
-                            <img src="https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/pagina-propuestas-ar/instagram2.png" alt="Síguenos en Instagram - Propuesta AR Empresas" class="w-64 md:w-80 rounded-lg shadow-lg object-cover">
-                        </div>
-                        <p class="mt-4 text-sm text-gray-400">Conoce nuestras soluciones para negocios</p>
-                    </div>
-                </div>
-            </section>
-        </div>
-
-        <!-- VISTA DEMO -->
-        <div id="view-demo" class="hidden pt-20">
-            <section class="py-16 sm:py-24">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="text-center mb-16">
-                        <h1 class="text-4xl sm:text-5xl font-bold text-white">Pruebe Nuestro Prototipo</h1>
-                        <p class="mt-4 text-lg text-gray-400 max-w-3xl mx-auto">Siga estos pasos para experimentar una muestra de lo que podemos crear.</p>
-                        <button data-view="view-main" class="mt-8 text-cyan-400 hover:text-cyan-300">&larr; Volver a la página principal</button>
-                    </div>
-                    <div class="bg-slate-900 rounded-xl shadow-lg p-8 md:p-12">
-                        <div class="grid md:grid-cols-2 gap-12 items-center">
-                            <div class="text-center md:text-left">
-                                <h2 class="text-3xl font-bold text-cyan-400 mb-2">1. Descargue la App</h2>
-                                <p class="text-gray-300 mb-6">Instale la aplicación en su dispositivo Android.<br><span class="text-sm text-gray-500">Recuerde habilitar "Instalar desde fuentes desconocidas".</span></p>
-                                <a href="https://github.com/instructorandradedcc/propuesta-AR/raw/main/Propuesta_Salud_AR_v1.0.0.apk" download class="inline-block bg-cyan-500 hover:bg-cyan-600 text-gray-900 font-bold py-3 px-8 rounded-lg">Descargar APK</a>
-                            </div>
-                            <div>
-                                <h2 class="text-3xl font-bold text-cyan-400 mb-2 text-center md:text-left">2. Use los Marcadores</h2>
-                                <p class="text-gray-400 mb-6 text-center md:text-left">Abra la app y apunte su cámara a estas imágenes. Haga clic para verlas en grande.</p>
-                                <div id="demo-gallery" class="grid grid-cols-3 md:grid-cols-4 gap-4"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </div>
-    </main>
-
-    <!-- FOOTER ACTUALIZADO -->
-    <footer class="bg-slate-900 border-t border-slate-800">
-        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-gray-500">
-            <div class="flex flex-col sm:flex-row justify-between items-center">
-                <div class="flex items-center mb-4 sm:mb-0">
-                    <img src="https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/logofundacion.jpg" alt="Logo Fundación Ecopiensa Evolution" class="h-8 w-8 rounded-full mr-3">
-                    <p>&copy; 2025 Propuesta AR. Todos los derechos reservados. <span class="ml-4 text-xs opacity-75">v1.05</span></p>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <a href="https://www.instagram.com/f.ecopiensa_evolution/" target="_blank" rel="noopener noreferrer" class="hover:text-cyan-400 transition-colors">
-                        <img src="https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/pagina-propuestas-ar/insragram.png" alt="Instagram" class="h-6 w-6 opacity-75 hover:opacity-100">
-                    </a>
-                </div>
-            </div>
-        </div>
-    </footer>
-    
-    <!-- MODALES DE IMÁGENES -->
-    <div id="demo-viewer" class="image-viewer-modal fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"></div>
-    <div id="education-viewer" class="image-viewer-modal fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"></div>
-    <div id="empresas-viewer" class="image-viewer-modal fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"></div>
-    
-    <!-- JavaScript -->
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const views = {
-            'view-main': document.getElementById('view-main'),
-            'view-educacion': document.getElementById('view-educacion'),
-            'view-empresas': document.getElementById('view-empresas'),
-            'view-demo': document.getElementById('view-demo')
-        };
-        const allNavLinks = document.querySelectorAll('a[data-view], button[data-view], a[data-scroll]');
-        const mainContentSections = document.querySelectorAll('#view-main section');
-        const headerNavLinks = document.querySelectorAll('header .nav-link');
-
-        function switchView(targetViewId, scrollTargetSelector) {
-            Object.values(views).forEach(view => view.classList.add('hidden'));
-            if (views[targetViewId]) {
-                views[targetViewId].classList.remove('hidden');
-            } else {
-                views['view-main'].classList.remove('hidden');
-            }
-            
-            window.scrollTo({ top: 0, behavior: 'instant' });
-
-            if (targetViewId === 'view-main' && scrollTargetSelector) {
-                setTimeout(() => {
-                    const el = document.querySelector(scrollTargetSelector);
-                    if(el) el.scrollIntoView({ behavior: 'smooth' });
-                }, 0);
-            }
-            updateActiveNav(targetViewId, scrollTargetSelector);
-        }
-
-        allNavLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
-                const targetView = link.dataset.view;
-                const scrollTarget = link.dataset.scroll;
-                if (targetView || scrollTarget) {
-                    e.preventDefault();
-                    switchView(targetView || 'view-main', scrollTarget);
-                }
-                if (mobileMenu.classList.contains('hidden') === false) {
-                    mobileMenu.classList.add('hidden');
-                    icons.forEach(i => i.classList.toggle('hidden'));
-                }
-            });
-        });
-
-        function updateActiveNav(activeView, scrollTarget) {
-             headerNavLinks.forEach(link => {
-                link.classList.remove('active');
-                const linkView = link.dataset.view;
-                const linkScroll = link.dataset.scroll;
-                if (linkView === activeView && !linkScroll) {
-                    link.classList.add('active');
-                } else if (activeView === 'view-main' && linkScroll === scrollTarget) {
-                     link.classList.add('active');
-                } else if (activeView === 'view-main' && !scrollTarget && linkScroll === '#inicio') {
-                    link.classList.add('active');
-                }
-            });
-        }
-        
-        const observer = new IntersectionObserver((entries) => {
-            if (views['view-main'].classList.contains('hidden')) return;
-            
-            let intersectingSection = null;
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    intersectingSection = entry.target;
-                }
-            });
-
-            if (intersectingSection) {
-                 const id = intersectingSection.getAttribute('id');
-                 headerNavLinks.forEach(link => {
-                     link.classList.remove('active');
-                     if (link.dataset.scroll === `#${id}`) {
-                         link.classList.add('active');
-                     }
-                });
-            } else if (window.scrollY === 0) {
-                 headerNavLinks.forEach(link => {
-                     link.classList.remove('active');
-                     if (link.dataset.scroll === '#inicio') {
-                         link.classList.add('active');
-                     }
-                 });
-            }
-
-        }, { rootMargin: '-40% 0px -60% 0px' });
-        mainContentSections.forEach(section => observer.observe(section));
-
-        const mobileMenuButton = document.getElementById('mobile-menu-button');
-        const mobileMenu = document.getElementById('mobile-menu');
-        const icons = mobileMenuButton.querySelectorAll('svg');
-        mobileMenuButton.addEventListener('click', () => {
-            mobileMenu.classList.toggle('hidden');
-            icons.forEach(icon => icon.classList.toggle('hidden'));
-        });
-
-        // Galería reutilizable
-        function setupInteractiveGallery(galleryId, viewerId, imageUrls) {
-            const gallery = document.getElementById(galleryId);
-            const viewer = document.getElementById(viewerId);
-            if (!gallery || !viewer) return;
-
-            viewer.innerHTML = `
-                <button class="close-viewer absolute top-5 right-5 text-white text-5xl z-10">&times;</button>
-                <button class="prev-img absolute left-5 top-1/2 -translate-y-1/2 text-white text-5xl z-10">&lt;</button>
-                <button class="next-img absolute right-5 top-1/2 -translate-y-1/2 text-white text-5xl z-10">&gt;</button>
-                <div class="w-full h-full flex items-center justify-center overflow-hidden p-10">
-                    <img src="" alt="Vista ampliada" class="viewer-img-content max-w-full max-h-full object-contain rounded-lg">
-                </div>`;
-
-            const viewerImg = viewer.querySelector('.viewer-img-content');
-            let currentIndex = 0;
-            let galleryPopulated = false;
-
-            function populateGallery() {
-                if (galleryPopulated) return;
-                imageUrls.forEach((url, index) => {
-                    const imgContainer = document.createElement('div');
-                    imgContainer.className = 'aspect-square bg-slate-800 rounded-lg overflow-hidden shadow-lg transform hover:scale-105 transition-transform duration-300 cursor-pointer';
-                    const img = document.createElement('img');
-                    img.src = url;
-                    img.alt = `Imagen de galería ${index + 1}`;
-                    img.className = 'w-full h-full object-cover';
-                    img.dataset.index = index;
-                    img.onerror = () => {
-                        img.src = 'https://placehold.co/400x400/334155/94a3b8?text=Error';
-                        console.warn(`Error al cargar imagen: ${url}`);
-                    };
-                    imgContainer.appendChild(img);
-                    gallery.appendChild(imgContainer);
-                });
-                galleryPopulated = true;
-            }
-            populateGallery();
-
-            const openViewer = (index) => { currentIndex = parseInt(index); updateViewerImage(); viewer.classList.add('open'); };
-            const closeViewer = () => viewer.classList.remove('open');
-            const showPrevImage = () => { currentIndex = (currentIndex - 1 + imageUrls.length) % imageUrls.length; updateViewerImage(); };
-            const showNextImage = () => { currentIndex = (currentIndex + 1) % imageUrls.length; updateViewerImage(); };
-            const updateViewerImage = () => { viewerImg.src = imageUrls[currentIndex]; resetZoom(); };
-            
-            gallery.addEventListener('click', (e) => e.target.tagName === 'IMG' && openViewer(e.target.dataset.index));
-            viewer.querySelector('.close-viewer').addEventListener('click', closeViewer);
-            viewer.querySelector('.prev-img').addEventListener('click', showPrevImage);
-            viewer.querySelector('.next-img').addEventListener('click', showNextImage);
-            
-            let scale = 1, panning = false, pointX = 0, pointY = 0, start = { x: 0, y: 0 };
-            const setTransform = () => { viewerImg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`; };
-            const resetZoom = () => { scale = 1; pointX = 0; pointY = 0; setTransform(); };
-
-            viewerImg.addEventListener('mousedown', (e) => { e.preventDefault(); panning = true; start = { x: e.clientX - pointX, y: e.clientY - pointY }; viewerImg.classList.add('dragging'); });
-            viewerImg.addEventListener('mouseup', () => { panning = false; viewerImg.classList.remove('dragging'); });
-            viewerImg.addEventListener('mousemove', (e) => { if (panning) { pointX = e.clientX - start.x; pointY = e.clientY - start.y; setTransform(); } });
-            viewerImg.addEventListener('wheel', (e) => { e.preventDefault(); const xs = (e.clientX - pointX) / scale; const ys = (e.clientY - pointY) / scale; scale *= (e.deltaY > 0) ? 0.9 : 1.1; pointX = e.clientX - xs * scale; pointY = e.clientY - ys * scale; setTransform(); });
-            
-            document.addEventListener('keydown', (e) => { if (viewer.classList.contains('open')) { if (e.key === 'Escape') closeViewer(); if (e.key === 'ArrowLeft') showPrevImage(); if (e.key === 'ArrowRight') showNextImage(); } });
-        }
-
-        // URLs de imágenes
-        const baseUrl = 'https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/pagina-propuestas-ar/';
-        
-        const demoImages = [ 'https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/cabeza1.png', 'https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/corazon.png', 'https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/dedo-mano.png', 'https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/dedo.png', 'https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/hueso-columna.png', 'https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/huesosmano.png', 'https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/mano-iz-protesis.png', 'https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/asetss/imagenes/protesis-mano-brazo.png' ];
-        
-        const educationImages = [ 
-            baseUrl + 'educacion/SOL-OLMER.png',
-            baseUrl + 'educacion/celulas-olmer-01.png',
-            baseUrl + 'educacion/dinosaurios-olmer.png',
-            baseUrl + 'educacion/moleculas.png',
-            baseUrl + 'educacion/piramides-olmer.png',
-            baseUrl + 'educacion/volvan-olmler.png',
-            baseUrl + 'adn-cel-olmer.png'
-        ];
-        
-        const empresasImages = [ 
-            baseUrl + 'empresas/catalogo%201%20o%20mueble.png',
-            baseUrl + 'empresas/catalogo1.png',
-            baseUrl + 'empresas/catalogo2.png',
-            baseUrl + 'empresas/empaques.png',
-            baseUrl + 'empresas/magia-para-empresas.png',
-            baseUrl + 'empresas/muebles-AR.png',
-            baseUrl + 'empresas/targetas.png',
-            baseUrl + 'AR-OLMER.png'
+        // --- Modelos de ECOPIENSA ---
+        const GITHUB_BASE_URL = 'https://raw.githubusercontent.com/instructorandradedcc/7777ar/main/asetss/modelss/';
+        const ECOPIENSA_MODELS = [
+            { name: 'Botellita Azul', url: `${GITHUB_BASE_URL}botellytaazul.glb` },
+            { name: 'Ecoladrillo', url: `${GITHUB_BASE_URL}ecoladrillo.glb` },
+            { name: 'Lata Plateada', url: `${GITHUB_BASE_URL}lataplateada.glb` },
+            { name: 'Papelito Verde', url: `${GITHUB_BASE_URL}papelitoverde.glb` },
+            { name: 'Señor Contenedor', url: `${GITHUB_BASE_URL}senorcontenedor.glb` },
+            { name: 'Tapa Roja', url: `${GITHUB_BASE_URL}taparoja.glb` }
         ];
 
-        setupInteractiveGallery('demo-gallery', 'demo-viewer', demoImages);
-        setupInteractiveGallery('education-gallery', 'education-viewer', educationImages);
-        setupInteractiveGallery('empresas-gallery', 'empresas-viewer', empresasImages);
-    });
+        // --- Configuración de Firebase ---
+        // Estas variables __app_id, __firebase_config, y __initial_auth_token
+        // son proporcionadas automáticamente por el entorno de Canvas.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db, auth, userId, poiCollectionRef;
+
+        // Elementos del DOM
+        const form = document.getElementById('poi-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const listContainer = document.getElementById('poi-list-container');
+        const loadingPois = document.getElementById('loading-pois');
+        const quickSelect = document.getElementById('model-quick-select');
+
+        // Función principal de inicialización
+        async function initializeAdmin() {
+            try {
+                // Habilitar logs detallados de Firestore
+                setLogLevel('Debug');
+
+                // 1. Inicializar Firebase
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // 2. Autenticar al usuario
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log('Usuario autenticado:', userId);
+                        // 3. Definir la ruta de la colección (pública)
+                        // Todos los usuarios (admin y viewers) usarán esta ruta.
+                        const collectionPath = `/artifacts/${appId}/public/data/pois`;
+                        poiCollectionRef = collection(db, collectionPath);
+                        console.log('Escuchando en la colección:', collectionPath);
+
+                        // 4. Poblar el selector rápido de modelos
+                        populateQuickSelect();
+
+                        // 5. Cargar y escuchar los POIs existentes
+                        loadAndListenPois();
+                    }
+                });
+
+                // Iniciar sesión (anónimamente si no hay token)
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+            } catch (error) {
+                console.error("Error al inicializar Firebase:", error);
+                loadingPois.textContent = "Error al conectar con la base de datos.";
+            }
+        }
+
+        // Poblar el menú de selección rápida
+        function populateQuickSelect() {
+            if (!quickSelect) return;
+            ECOPIENSA_MODELS.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.url;
+                option.textContent = model.name;
+                quickSelect.appendChild(option);
+            });
+
+            quickSelect.addEventListener('change', (e) => {
+                const selectedUrl = e.target.value;
+                if (selectedUrl) {
+                    const selectedName = e.target.options[e.target.selectedIndex].text;
+                    document.getElementById('poi-model-url').value = selectedUrl;
+                    document.getElementById('poi-name').value = selectedName;
+                }
+            });
+        }
+
+        // Cargar POIs y escuchar cambios en tiempo real
+        function loadAndListenPois() {
+            const q = query(poiCollectionRef);
+            
+            onSnapshot(q, (querySnapshot) => {
+                if (querySnapshot.empty) {
+                    listContainer.innerHTML = '<p class="text-gray-500">No hay puntos de interés guardados. ¡Agrega uno!</p>';
+                    return;
+                }
+
+                listContainer.innerHTML = ''; // Limpiar la lista
+                querySnapshot.forEach((doc) => {
+                    const poi = doc.data();
+                    const poiId = doc.id;
+
+                    const poiElement = document.createElement('div');
+                    poiElement.className = 'p-4 border border-gray-200 rounded-lg shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4 items-center';
+                    poiElement.innerHTML = `
+                        <div>
+                            <strong class="block text-sm text-gray-800">${poi.name}</strong>
+                            <span class="text-xs text-gray-500">ID: ${poiId.substring(0, 6)}...</span>
+                        </div>
+                        <div class="text-sm">
+                            <span class="block">Lat: ${poi.lat}</span>
+                            <span class="block">Lon: ${poi.lon}</span>
+                        </div>
+                        <div class="text-sm">
+                            <span class="block">Inicia: ${poi.startDate}</span>
+                            <span class="block">Termina: ${poi.endDate}</span>
+                        </div>
+                        <div class="text-right">
+                            <button data-id="${poiId}" class="delete-btn bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-300">
+                                Eliminar
+                            </button>
+                        </div>
+                    `;
+                    listContainer.appendChild(poiElement);
+                });
+
+            }, (error) => {
+                console.error("Error al escuchar POIs:", error);
+                listContainer.innerHTML = '<p class="text-red-500">Error al cargar los puntos de interés.</p>';
+            });
+        }
+
+        // Manejar el envío del formulario para agregar un POI
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!poiCollectionRef) {
+                alert("La base de datos no está lista. Intenta de nuevo.");
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Guardando...';
+
+            try {
+                const newPoi = {
+                    name: document.getElementById('poi-name').value,
+                    modelUrl: document.getElementById('poi-model-url').value,
+                    soundUrl: document.getElementById('poi-sound-url').value || "",
+                    lat: parseFloat(document.getElementById('poi-lat').value),
+                    lon: parseFloat(document.getElementById('poi-lon').value),
+                    scale: parseFloat(document.getElementById('poi-scale').value),
+                    startDate: document.getElementById('poi-start-date').value,
+                    endDate: document.getElementById('poi-end-date').value
+                };
+
+                // Validar datos
+                if (isNaN(newPoi.lat) || isNaN(newPoi.lon) || isNaN(newPoi.scale)) {
+                    throw new Error("Latitud, Longitud y Escala deben ser números válidos.");
+                }
+                if (!newPoi.startDate || !newPoi.endDate) {
+                    throw new Error("Las fechas de inicio y fin son obligatorias.");
+                }
+
+                // Agregar el documento a Firestore
+                const docRef = await addDoc(poiCollectionRef, newPoi);
+                console.log("Documento agregado con ID: ", docRef.id);
+                
+                form.reset(); // Limpiar el formulario
+
+            } catch (error) {
+                console.error("Error al agregar documento: ", error);
+                alert("Error al guardar: " + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Guardar Punto de Interés';
+            }
+        });
+
+        // Manejar clics en los botones de eliminar (delegación de eventos)
+        listContainer.addEventListener('click', async (e) => {
+            if (e.target && e.target.classList.contains('delete-btn')) {
+                const docId = e.target.getAttribute('data-id');
+                
+                // Usar un modal personalizado en lugar de confirm()
+                if (window.confirm("¿Estás seguro de que quieres eliminar este punto de interés?")) {
+                    try {
+                        e.target.disabled = true;
+                        e.target.textContent = 'Eliminando...';
+                        const docRef = doc(db, poiCollectionRef.path, docId);
+                        await deleteDoc(docRef);
+                        console.log("Documento eliminado:", docId);
+                    } catch (error) {
+                        console.error("Error al eliminar documento: ", error);
+                        alert("No se pudo eliminar el documento.");
+                        e.target.disabled = false;
+                        e.target.textContent = 'Eliminar';
+                    }
+                }
+            }
+        });
+
+        // Iniciar la aplicación
+        initializeAdmin();
+
     </script>
 </body>
 </html>
+
+
