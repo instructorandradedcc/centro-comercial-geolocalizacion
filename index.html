@@ -168,6 +168,13 @@
             <div class="flex justify-between items-center mb-8">
                 <h1 class="text-3xl font-bold text-blue-700">
                     Panel de Administración AR
+                    <!-- 
+                        ================================================
+                        ¡¡¡ADVERTENCIA DE DESARROLLO - NO ELIMINAR!!!
+                        El <span> de abajo muestra la versión de la app.
+                        Es vital para el seguimiento de cambios.
+                        ================================================
+                    -->
                     <span id="version-display" class="text-sm align-middle font-normal text-gray-400 ml-2"></span>
                 </h1>
                 <div>
@@ -406,7 +413,10 @@
 
 
         // --- Versión de la App ---
-        const APP_VERSION = '1.18'; // Corregido Crosshair, Coords Display, Preview 2D
+        // ¡¡¡ADVERTENCIA DE DESARROLLO - NO ELIMINAR!!!
+        // Esta constante es vital para el seguimiento de cambios.
+        // Incrementar en 0.01 por CADA cambio realizado al código.
+        const APP_VERSION = '1.20'; // Reordenada inicialización para mostrar UI antes de error de Firebase
 
         // --- Modelos de ECOPIENSA (con imageUrl) ---
         const GITHUB_BASE_URL_MODELS = 'https://raw.githubusercontent.com/instructorandradedcc/7777ar/main/asetss/modelss/';
@@ -507,13 +517,12 @@
                 stopAR();
                 stopMap();
                  initializeModelSelection(); 
-                 loadAndDisplayPois(); // Recargar lista al volver a admin
+                 loadAndDisplayPois(); 
             }
         }
 
         function stopMap() {
             if (map) {
-                 // Quitar listener de movimiento antes de remover el mapa
                  map.off('move', updateCenterCoordsDisplay);
                 map.remove(); 
                 map = null;
@@ -625,7 +634,6 @@
 
         // --- UI Initialization and Population ---
 
-        // Display App Version
         function displayAppVersion() {
              if (versionDisplay) {
                  versionDisplay.textContent = `v${APP_VERSION}`;
@@ -636,7 +644,6 @@
         }
 
 
-        // Fill the checkbox list on Page 1
         function initializeModelSelection() {
              console.log("Initializing model selection UI..."); 
              if (!ecopiensaSelectionList || !loadingModelsPlaceholder || !selectVideoCheckbox) {
@@ -671,7 +678,6 @@
              console.log("Model/Video checkbox UI initialized/updated.");
         }
         
-        // Helper function to create checkboxes (añadido imageUrl)
         function createCheckbox(name, url, isChecked, isVideoPlaceholder = false, imageUrl = '') {
              if (!ecopiensaSelectionList) return; 
 
@@ -699,7 +705,6 @@
              ecopiensaSelectionList.appendChild(label);
         }
 
-        // Handler for the custom video checkbox (añadido imageUrl)
          function handleVideoCheckboxChange(e) {
              const placeholderExists = modelsToPlace.some(m => m.isCustomVideo);
              if (e.target.checked) {
@@ -714,7 +719,6 @@
              console.log("Models to place (video toggle):", modelsToPlace);
          }
 
-        // Unified handler for all checkboxes (añadido imageUrl)
         function handleCheckboxChange(e) {
              const itemData = { 
                  name: e.target.dataset.name, 
@@ -737,10 +741,16 @@
          }
 
 
-        // Load and listen for POIs for the Admin list and update local cache
         function loadAndListenPois() {
-             if (!poiCollectionRef) { /* ... */ return; }
-             if (!listContainer || !loadingPois) { /* ... */ return; }
+             if (!poiCollectionRef) { 
+                  console.warn("loadAndListenPois called before poiCollectionRef is set.");
+                  if (loadingPois && !loadingPois.textContent.toLowerCase().includes("error")) loadingPois.textContent = "Esperando configuración de base de datos...";
+                  return; 
+             }
+             if (!listContainer || !loadingPois) { 
+                  console.error("loadAndListenPois called but listContainer or loadingPois element not found.");
+                  return; 
+             }
             
             if (loadingPois && !loadingPois.textContent.toLowerCase().includes("error")) {
                  loadingPois.textContent = "Cargando puntos guardados..."; 
@@ -757,6 +767,10 @@
 
                 if (querySnapshot.empty) {
                     listContainer.innerHTML = '<p class="text-gray-500">No hay contenido guardado en Firebase.</p>';
+                    // Aún si está vacío, actualizamos el mapa
+                     if (map && pages.map.classList.contains('active')) {
+                          updateMapMarkersAndPlacedList();
+                     }
                     return;
                 }
 
@@ -765,7 +779,6 @@
                     allPoisData.push(poi); 
 
                     const poiElement = document.createElement('div');
-                    // ... (innerHTML remains the same) ...
                     poiElement.className = 'poi-item p-4 border border-gray-200 rounded-lg shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4 items-center';
                     let typeLabel = poi.poiType === 'video' ? 'Video' : 'Modelo 3D';
                     let urlToShow = poi.poiType === 'video' ? (poi.videoUrl || 'N/A') : (poi.modelUrl || 'N/A');
@@ -794,7 +807,6 @@
                     listContainer.appendChild(poiElement);
                 });
                  console.log(`Cache local 'allPoisData' actualizado con ${allPoisData.length} POIs.`);
-                 // Actualizar el mapa si ya está cargado y estamos en esa página
                  if (map && pages.map.classList.contains('active')) {
                       updateMapMarkersAndPlacedList();
                  }
@@ -807,27 +819,16 @@
                  showMessage("Error al actualizar la lista de contenido.", 5000);
             });
         }
-
-        // Listener para eliminar POIs (usa event delegation)
-        if (listContainer) {
-            listContainer.addEventListener('click', async (e) => {
-                 if (!firebaseReady || !poiCollectionRef) { /* ... */ return; }
-                if (e.target && e.target.classList.contains('delete-btn')) { 
-                    const docId = e.target.getAttribute('data-id');
-                    if (confirm("¿Estás seguro de que quieres eliminar este punto de interés?")) {
-                        // ... (delete logic) ...
-                    }
-                }
-            });
-        } else {
-             console.error("Error Crítico: No se encontró el contenedor de la lista de POIs (poi-list-container).");
-        }
         
         // --- Map Logic (Page 2) ---
         
         function initMap() {
              console.log("Initializing Map..."); 
-            if (!firebaseReady || !poiCollectionRef) { /* ... */ return; }
+            if (!firebaseReady || !poiCollectionRef) { 
+                 showMessage("La base de datos no está lista. Por favor espere...", 3000);
+                 console.warn("Attempted to initMap before Firebase was ready.");
+                 return; 
+            }
              if (map) { 
                  console.log("Map already exists. Invalidating size.");
                  setTimeout(() => { if (map) map.invalidateSize(); }, 100); 
@@ -837,18 +838,13 @@
              }
 
             const mapContainer = document.getElementById('map-canvas');
-             if (!mapContainer) { /* ... */ return; }
+             if (!mapContainer) { console.error("Map container element not found."); return; }
             const defaultCenter = [4.0835, -76.1915]; 
             map = L.map(mapContainer, { zoomControl: false, preferCanvas: true }).setView(defaultCenter, 15);
 
-            L.tileLayer('https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', { /* ... */ }).addTo(map);
+            L.tileLayer('https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: 'Imagery &copy;2025 Google' }).addTo(map);
 
-            // Dibujar marcadores iniciales desde el cache
             updateMapMarkersAndPlacedList(); 
-            // El listener onSnapshot ya está activo desde loadAndListenPois,
-            // así que no necesitamos uno nuevo aquí, pero SÍ necesitamos actualizar
-            // los marcadores cada vez que onSnapshot actualice allPoisData.
-            // Esto se maneja llamando a updateMapMarkersAndPlacedList dentro de loadAndListenPois.
 
             populatePlacementPanel(); 
             cancelPlacement(); 
@@ -861,21 +857,31 @@
             console.log("Map 'move' listener attached for center coords display."); 
 
             // Zoom slider sync
-            if (mapZoomSlider) { /* ... */ }
+            if (mapZoomSlider) { 
+                 mapZoomSlider.value = map.getZoom();
+                 mapZoomSlider.removeEventListener('input', handleZoomSlider); 
+                 mapZoomSlider.addEventListener('input', handleZoomSlider);
+            }
             map.off('zoomend', handleMapZoomEnd); 
             map.on('zoomend', handleMapZoomEnd);
             
             // Jump to coords button
-            if (jumptoBtn) { /* ... */ }
+            if (jumptoBtn) { 
+                 jumptoBtn.removeEventListener('click', jumpToCoords); 
+                 jumptoBtn.addEventListener('click', jumpToCoords);
+             }
 
             // POI Type Selector listener
-            if (placePoiTypeSelect) { /* ... */ }
+            if (placePoiTypeSelect) { 
+                 placePoiTypeSelect.removeEventListener('change', handlePoiTypeChange);
+                 placePoiTypeSelect.addEventListener('change', handlePoiTypeChange);
+                 handlePoiTypeChange(); 
+             }
 
             setTimeout(() => { if (map) map.invalidateSize(); }, 200); 
             console.log("Map initialization complete.");
         }
         
-        // Nuevo: Actualiza el display de coordenadas
          function updateCenterCoordsDisplay() {
              // console.log("Map moved, updating coords display..."); // Log frecuente
              if (map && mapCenterCoordsEl) {
@@ -885,19 +891,22 @@
                      <span>Lon: ${center.lng.toFixed(6)}</span>
                  `;
              } else if (!mapCenterCoordsEl) {
-                  // Solo loguear una vez si falta
                   if (typeof mapCenterCoordsEl === 'undefined' || mapCenterCoordsEl === null) {
                        console.warn("mapCenterCoordsEl not found during update.");
                   }
              }
          }
 
-        // Dibuja/actualiza marcadores y lista derecha desde allPoisData
         function updateMapMarkersAndPlacedList() {
-             if (!map || !placedPoisList) { /* ... */ return; }
+             if (!map || !placedPoisList) {
+                  console.warn("Cannot update map markers/list: Map or list element not ready.");
+                  return;
+             }
              console.log("Updating map markers and placed POIs list from local cache...");
              
-             Object.values(poiMarkers).forEach(marker => { /* ... */ });
+             Object.values(poiMarkers).forEach(marker => {
+                  if (map.hasLayer(marker)) map.removeLayer(marker);
+             });
              poiMarkers = {}; 
              placedPoisList.innerHTML = ''; 
              
@@ -909,23 +918,41 @@
                       if (poi.poiType === 'video') {
                            iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png'; 
                       }
-                     const marker = L.marker([poi.lat, poi.lon], { /* ... */ });
+                     const marker = L.marker([poi.lat, poi.lon], { 
+                          icon: L.icon({
+                               iconUrl: iconUrl,
+                               shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                               iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+                          })
+                     })
+                         .addTo(map)
+                         .bindPopup(`<b>${poi.name || 'No Name'}</b> (${poi.poiType || 'model'})`);
                      poiMarkers[poi.id] = marker; 
-                 } 
+                 } else { console.warn("POI for map missing coordinates:", poi.id); }
                  
                  const listItem = document.createElement('div');
-                 // ... (innerHTML y listener) ...
+                 listItem.className = 'placed-poi-item p-2 border-b flex justify-between items-center';
+                 listItem.innerHTML = `
+                     <span class="text-sm font-medium">${poi.name || 'No Name'}</span>
+                     <button data-id="${poi.id}" class="edit-location-btn bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded">
+                         Edit Loc.
+                     </button>
+                 `;
+                 const editBtn = listItem.querySelector('.edit-location-btn');
+                 editBtn.removeEventListener('click', handleEditLocationClick);
+                 editBtn.addEventListener('click', handleEditLocationClick);
                  placedPoisList.appendChild(listItem);
              });
              
-             if (!hasPois) { /* ... */ }
+             if (!hasPois) {
+                  placedPoisList.innerHTML = '<p class="text-sm text-gray-500">No content saved on map yet.</p>';
+             }
              console.log(`Updated ${Object.keys(poiMarkers).length} markers and placed POIs panel.`);
         }
 
 
-        // CORRECCIÓN: Asegurar que los elementos del formulario existen antes de usarlos
         function handlePoiTypeChange() {
-             if (!placePoiTypeSelect || !modelFieldsDiv || !videoFieldsDiv || !placeModelUrlInput || !placeVideoUrlInput) { /* ... */ return; }
+             if (!placePoiTypeSelect || !modelFieldsDiv || !videoFieldsDiv || !placeModelUrlInput || !placeVideoUrlInput) { console.error("POI type change handler missing required form elements."); return; }
              const selectedType = placePoiTypeSelect.value;
              const isVideo = selectedType === 'video';
              
@@ -936,23 +963,83 @@
              placeVideoUrlInput.disabled = !isVideo;
 
              const scaleLabel = document.querySelector('label[for="place-scale"]');
-             if (scaleLabel) { /* ... */ }
+             if (scaleLabel) { scaleLabel.textContent = isVideo ? 'Video Width (meters)' : 'Model Scale'; }
         }
 
 
         // --- Location Editing Functions ---
-        function handleEditLocationClick(e) { /* ... */ }
-        function startEditLocation(poiId) { /* ... */ }
-        function cancelEditLocation() { /* ... */ }
-        async function handleSaveEditLocation() { /* ... */ }
-        // Listeners para botones de edición (adjuntos en DOMContentLoaded)
+         function handleEditLocationClick(e) {
+             const poiId = e.target?.dataset?.id; 
+             if (poiId) { startEditLocation(poiId); } 
+             else { console.error("Could not get POI ID from edit button."); }
+        }
 
+        function startEditLocation(poiId) {
+             if (isPlacingModel) cancelPlacement(); 
+             if (!allPoisData || allPoisData.length === 0) { showMessage("POI data not loaded yet.", 3000); return; }
+             const poiData = allPoisData.find(p => p.id === poiId);
+             const marker = poiMarkers[poiId];
+             if (!poiData || !marker) { showMessage("Error: Could not find POI data or marker.", 4000); return; }
+             if (!map) { showMessage("Map is not initialized.", 3000); return; }
 
-        function handleZoomSlider(e) { /* ... */ }
-        function handleMapZoomEnd() { /* ... */ }
-        function jumpToCoords() { /* ... */ }
+             isEditingLocation = true;
+             currentEditingPoiId = poiId;
+             currentEditingMarker = marker; 
 
-        // Modificado para buscar imageUrl
+             if (editingPoiNameEl) editingPoiNameEl.textContent = `Moving: ${poiData.name || 'No Name'}`;
+             if (placementPanel) placementPanel.classList.add('hidden');
+             if (placedPoisPanel) placedPoisPanel.classList.add('hidden');
+             if (editLocationPanel) editLocationPanel.classList.remove('hidden');
+
+             map.setView(marker.getLatLng(), 19); 
+             showMessage("Edit Mode: Move map and save new location.", 4000);
+        }
+
+        function cancelEditLocation() {
+             isEditingLocation = false;
+             currentEditingPoiId = null;
+             currentEditingMarker = null;
+             if (placementPanel) placementPanel.classList.remove('hidden');
+             if (placedPoisPanel) placedPoisPanel.classList.remove('hidden');
+             if (editLocationPanel) editLocationPanel.classList.add('hidden');
+        }
+        
+        async function handleSaveEditLocation() {
+             if (!isEditingLocation || !map || !poiCollectionRef || !currentEditingPoiId || !saveEditLocationBtn) { return; }
+
+             const newLatLng = map.getCenter(); 
+             showMessage('Updating location...', 2000);
+             saveEditLocationBtn.disabled = true;
+             saveEditLocationBtn.textContent = 'Saving...';
+
+             try {
+                 const docRef = doc(db, poiCollectionRef.path, currentEditingPoiId);
+                 await updateDoc(docRef, { lat: newLatLng.lat, lon: newLatLng.lng });
+                 showMessage('Location updated successfully!', 3000);
+                 cancelEditLocation(); 
+             } catch (error) {
+                 console.error("Error updating location:", error);
+                 showMessage("Error saving new location.", 5000);
+             } finally {
+                  if (saveEditLocationBtn) { 
+                      saveEditLocationBtn.disabled = false;
+                      saveEditLocationBtn.textContent = 'Save New Location (at Crosshair)';
+                  }
+             }
+        }
+
+        function handleZoomSlider(e) { if (map) map.setZoom(parseFloat(e.target.value)); }
+        function handleMapZoomEnd() { if (map && mapZoomSlider) mapZoomSlider.value = map.getZoom(); }
+        function jumpToCoords() { 
+            const latInput = document.getElementById('jumpto-lat');
+            const lonInput = document.getElementById('jumpto-lon');
+             if (!latInput || !lonInput) return; 
+            const lat = parseFloat(latInput.value);
+            const lon = parseFloat(lonInput.value);
+            if (isNaN(lat) || isNaN(lon) || !map) { showMessage("Please enter valid latitude and longitude.", 3000); return; }
+            map.setView([lat, lon], 18); 
+         }
+
         async function populatePlacementPanel() {
              if (!firebaseReady || !poiCollectionRef || !modelsToPlaceList) { /* ... */ return; }
             
@@ -966,7 +1053,10 @@
 
                 const unplacedContent = modelsToPlace.filter(item => !placedContentIdentifiers.has(item.url));
 
-                if (unplacedContent.length === 0) { /* ... */ return; }
+                if (unplacedContent.length === 0) { 
+                    modelsToPlaceList.innerHTML = '<p class="text-sm text-gray-500">All selected content is already placed, or none selected. Return to Panel.</p>';
+                    return; 
+                }
 
                 unplacedContent.forEach((item) => {
                     const currentIndex = modelsToPlace.findIndex(m => m.url === item.url); 
@@ -974,29 +1064,23 @@
 
                     const button = document.createElement('button'); 
                     button.className = 'place-btn control-button bg-blue-500 hover:bg-blue-600 w-full text-left'; 
-                    button.textContent = `Colocar ${item.name}`; 
+                    button.textContent = `Place ${item.name}`; 
                     button.dataset.name = item.name; 
                     button.dataset.url = item.url; 
                     button.dataset.index = currentIndex; 
-                    // Añadir imageUrl al dataset del botón
-                     button.dataset.imageUrl = item.imageUrl || ''; // Usar imageUrl del item
-
-                    if (item.isCustomVideo) {
-                         button.dataset.isCustomVideo = "true";
-                    }
+                    button.dataset.imageUrl = item.imageUrl || ''; // Usar imageUrl del item
+                    if (item.isCustomVideo) { button.dataset.isCustomVideo = "true"; }
                     
                     button.removeEventListener('click', handlePlaceButtonClick); 
                     button.addEventListener('click', handlePlaceButtonClick); 
                     
                     modelsToPlaceList.appendChild(button); 
                 });
-                console.log("Placement panel populated.");
             } catch (error) { /* ... */ }
         }
         
         function handlePlaceButtonClick(e) { startPlacement(e.target.dataset); }
 
-        // Modificado para mostrar imagen previa
         function startPlacement(itemData) {
              console.log("Starting placement for:", itemData); 
              const index = parseInt(itemData.index);
@@ -1008,7 +1092,7 @@
             isPlacingModel = true;
             currentPlacingModel = { ...modelsToPlace[index], originalIndex: index }; 
 
-             if (placingModelName) placingModelName.textContent = `Colocando: ${currentPlacingModel.name}`;
+             if (placingModelName) placingModelName.textContent = `Placing: ${currentPlacingModel.name}`;
             
             // Mostrar imagen previa
              if (placementPreviewImageEl && itemData.imageUrl) {
@@ -1027,20 +1111,35 @@
                   console.warn("placementPreviewImageEl not found.");
              }
 
-             if (placePoiTypeSelect) { /* ... */ }
+             if (placePoiTypeSelect) { 
+                 placePoiTypeSelect.value = isCustomVideo ? 'video' : 'model';
+                 handlePoiTypeChange(); 
+             }
              if (placeNameInput) placeNameInput.value = currentPlacingModel.name; 
              if (placeModelUrlInput) placeModelUrlInput.value = isCustomVideo ? '' : currentPlacingModel.url;
              if (placeVideoUrlInput) placeVideoUrlInput.value = ''; 
-             // ... resto de campos del formulario ...
+             const soundUrlInput = document.getElementById('place-sound-url');
+             if (soundUrlInput) soundUrlInput.value = '';
+             const scaleInput = document.getElementById('place-scale');
+             if (scaleInput) scaleInput.value = '1.0';
+             const heightInput = document.getElementById('place-ground-height');
+             if (heightInput) heightInput.value = '0.0';
+            
+            const today = new Date().toISOString().split('T')[0];
+            const nextMonth = new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0];
+             const startDateInput = document.getElementById('place-start-date');
+             if (startDateInput) startDateInput.value = today;
+             const endDateInput = document.getElementById('place-end-date');
+             if (endDateInput) endDateInput.value = nextMonth;
+
 
             if (modelsToPlaceList) modelsToPlaceList.classList.add('hidden'); 
             if (placementFormContainer) placementFormContainer.classList.remove('hidden'); 
             
-            showMessage(`Mueve el mapa y presiona 'Guardar Ubicación'`);
+            showMessage(`Move map and press 'Save Location'`);
         }
 
 
-        // Modificado para ocultar imagen previa
         function cancelPlacement() { 
             isPlacingModel = false;
             currentPlacingModel = {};
@@ -1049,25 +1148,108 @@
             if (placementPreviewImageEl) placementPreviewImageEl.style.display = 'none'; 
              console.log("Placement cancelled.");
         }
-        cancelPlacementBtn?.removeEventListener('click', cancelPlacement); 
-        cancelPlacementBtn?.addEventListener('click', cancelPlacement); 
+        
 
+        async function handleSavePlacement() { 
+            if (!isPlacingModel || !map || !poiCollectionRef || !savePlacementBtn) { return; }
 
-        async function handleSavePlacement() { /* ... */ }
-        savePlacementBtn?.removeEventListener('click', handleSavePlacement); 
-        savePlacementBtn?.addEventListener('click', handleSavePlacement); 
+            const latlng = map.getCenter(); 
+            showMessage('Saving...', 2000); 
+            savePlacementBtn.disabled = true; 
+            savePlacementBtn.textContent = 'Saving...'; 
 
-        // --- Summary Page Logic (Page 3) ---
-        function populateSummaryPage() { /* ... */ }
+            try {
+                 if (!currentPlacingModel || typeof currentPlacingModel.originalIndex !== 'number') { throw new Error("Internal error: Missing data..."); }
 
+                 const poiType = placePoiTypeSelect.value;
+                 let modelUrl = '';
+                 let videoUrl = '';
+                 let name = placeNameInput.value.trim(); 
+
+                 if (!name) throw new Error("Descriptive name is required.");
+
+                 if (poiType === 'video') { 
+                     videoUrl = placeVideoUrlInput.value.trim();
+                     if (!videoUrl) throw new Error("Video URL is required for Video type.");
+                     if (!videoUrl.startsWith('http') || !videoUrl.toLowerCase().endsWith('.mp4')) {
+                          console.warn("Video URL format might be invalid:", videoUrl);
+                     }
+                      modelUrl = ''; 
+                 } else { 
+                     modelUrl = placeModelUrlInput.value.trim(); 
+                     if (!modelUrl) throw new Error("Model URL is required for Model 3D type.");
+                      videoUrl = ''; 
+                 }
+
+                const newPoi = { 
+                    name: name, 
+                    poiType: poiType, 
+                    modelUrl: modelUrl, 
+                    videoUrl: videoUrl, 
+                    soundUrl: document.getElementById('place-sound-url')?.value.trim() || "", 
+                    lat: latlng.lat,
+                    lon: latlng.lng,
+                    scale: parseFloat(document.getElementById('place-scale')?.value || "1.0"), 
+                    groundHeight: parseFloat(document.getElementById('place-ground-height')?.value || "0.0"), 
+                    startDate: document.getElementById('place-start-date')?.value || "", 
+                    endDate: document.getElementById('place-end-date')?.value || "" 
+                };
+
+                // Validation
+                if (isNaN(newPoi.scale) || isNaN(newPoi.groundHeight)) throw new Error("Scale/Height must be valid numbers.");
+                if (newPoi.scale <= 0) throw new Error("Scale must be positive.");
+                if (!newPoi.startDate || !newPoi.endDate) throw new Error("Start and End dates are required.");
+                const startDate = new Date(newPoi.startDate);
+                const endDate = new Date(newPoi.endDate);
+                if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) throw new Error("Invalid date format.");
+                if (endDate < startDate) throw new Error("End date cannot be before start date.");
+
+                await addDoc(poiCollectionRef, newPoi); 
+                
+                showMessage(`'${newPoi.name}' saved successfully!`, 3000); 
+
+                // --- Remove from 'modelsToPlace' and uncheck checkbox ---
+                 const indexToRemove = currentPlacingModel.originalIndex;
+                 if (indexToRemove >= 0 && indexToRemove < modelsToPlace.length) {
+                       if (modelsToPlace[indexToRemove]?.url === currentPlacingModel.url) {
+                            const removedItem = modelsToPlace.splice(indexToRemove, 1)[0];
+                            let checkboxSelector = removedItem.isCustomVideo 
+                                 ? '#select-video-cb' 
+                                 : `.model-select-cb[data-url="${removedItem.url}"]`;
+                            const checkbox = document.querySelector(checkboxSelector);
+                            if (checkbox) checkbox.checked = false;
+                       } else { 
+                            console.error("Index mismatch when removing placed item. Array may have shifted.");
+                            modelsToPlace = modelsToPlace.filter(m => m.url !== currentPlacingModel.url);
+                       }
+                 } else { 
+                      console.error("Invalid original index found when trying to remove placed item:", indexToRemove);
+                       modelsToPlace = modelsToPlace.filter(m => m.url !== currentPlacingModel.url);
+                 }
+
+                populatePlacementPanel(); 
+                cancelPlacement(); 
+
+            } catch (error) { 
+                 console.error("Error saving POI: ", error);
+                 showMessage("Error saving: " + error.message, 5000);
+            } finally { 
+                 if (savePlacementBtn) { 
+                    savePlacementBtn.disabled = false; 
+                    savePlacementBtn.textContent = 'Save Location (at Crosshair)'; 
+                 }
+            }
+         }
+         
+         function populateSummaryPage() { /* ... */ }
 
         // --- AR Logic (Page 4) ---
-        async function startARFlow() { /* ... */ }
-        async function initializeARScene() { /* ... */ }
-        function stopAR() { /* ... */ }
-        function onGPSUpdate(event) { /* ... */ }
-        function onGPSError(event) { /* ... */ }
-        function startGPSWatch() { /* ... */ }
+         async function startARFlow() { /* ... */ }
+         async function initializeARScene() { /* ... */ }
+         function stopAR() { /* ... */ }
+         function onGPSUpdate(event) { /* ... */ }
+         function onGPSError(event) { /* ... */ }
+         function startGPSWatch() { /* ... */ }
 
         // --- Navigation Event Listeners ---
          function setupNavigationListeners() {
@@ -1160,105 +1342,60 @@
              initializeFirebase(); 
              initializeModelSelection(); 
              setupNavigationListeners(); 
+
+             // --- CORRECCIÓN: Mover listeners de botones del formulario aquí ---
+             if (cancelPlacementBtn) {
+                 cancelPlacementBtn.removeEventListener('click', cancelPlacement); 
+                 cancelPlacementBtn.addEventListener('click', cancelPlacement); 
+             }
+             if (savePlacementBtn) {
+                 savePlacementBtn.removeEventListener('click', handleSavePlacement); 
+                 savePlacementBtn.addEventListener('click', handleSavePlacement); 
+             }
+             if (saveEditLocationBtn) {
+                 saveEditLocationBtn.removeEventListener('click', handleSaveEditLocation);
+                 saveEditLocationBtn.addEventListener('click', handleSaveEditLocation);
+             }
+             if (cancelEditLocationBtn) {
+                 cancelEditLocationBtn.removeEventListener('click', cancelEditLocation);
+                 cancelEditLocationBtn.addEventListener('click', cancelEditLocation);
+             }
+             if (listContainer) {
+                 listContainer.addEventListener('click', async (e) => {
+                     if (!firebaseReady || !poiCollectionRef) { 
+                         showMessage("Error: La base de datos no está lista para eliminar.", 4000);
+                         return; 
+                     }
+                    if (e.target && e.target.classList.contains('delete-btn')) { 
+                        const docId = e.target.getAttribute('data-id');
+                        if (confirm("¿Estás seguro de que quieres eliminar este punto de interés?")) {
+                            const button = e.target; 
+                            try {
+                                button.disabled = true;
+                                button.textContent = 'Eliminando...';
+                                const docRef = doc(db, poiCollectionRef.path, docId);
+                                await deleteDoc(docRef);
+                                showMessage('Punto de interés eliminado.', 3000);
+                            } catch (error) {
+                                console.error("Error al eliminar documento: ", error);
+                                showMessage("No se pudo eliminar el documento.", 5000);
+                                if (button && listContainer.contains(button)) { 
+                                   button.disabled = false;
+                                   button.textContent = 'Eliminar';
+                                }
+                            }
+                        }
+                    }
+                });
+             }
+
+             console.log("Form and List listeners attached.");
          });
 
         // --- Pegar aquí el resto de las funciones que faltan ---
         // (handleSavePlacement, populateSummaryPage, startARFlow, initializeARScene, stopAR, onGPSUpdate, onGPSError, startGPSWatch, setupNavigationListeners, handle..., etc.)
         // Asegúrate de copiar TODO el código de las funciones desde la versión anterior (v1.15)
         // ... (el código completo de las funciones va aquí) ...
-         async function handleSavePlacement() { 
-            if (!isPlacingModel || !map || !poiCollectionRef || !savePlacementBtn) { return; }
-
-            const latlng = map.getCenter(); 
-            showMessage('Saving...', 2000); 
-            savePlacementBtn.disabled = true; 
-            savePlacementBtn.textContent = 'Saving...'; 
-
-            try {
-                 if (!currentPlacingModel || typeof currentPlacingModel.originalIndex !== 'number') { throw new Error("Internal error: Missing data..."); }
-
-                 const poiType = placePoiTypeSelect.value;
-                 let modelUrl = '';
-                 let videoUrl = '';
-                 let name = placeNameInput.value.trim(); 
-
-                 if (!name) throw new Error("Descriptive name is required.");
-
-                 if (poiType === 'video') { 
-                     videoUrl = placeVideoUrlInput.value.trim();
-                     if (!videoUrl) throw new Error("Video URL is required for Video type.");
-                     if (!videoUrl.startsWith('http') || !videoUrl.toLowerCase().endsWith('.mp4')) {
-                          console.warn("Video URL format might be invalid:", videoUrl);
-                     }
-                      modelUrl = ''; 
-                 } else { 
-                     modelUrl = placeModelUrlInput.value.trim(); 
-                     if (!modelUrl) throw new Error("Model URL is required for Model 3D type.");
-                      videoUrl = ''; 
-                 }
-
-
-                const newPoi = { 
-                    name: name, 
-                    poiType: poiType, 
-                    modelUrl: modelUrl, 
-                    videoUrl: videoUrl, 
-                    soundUrl: document.getElementById('place-sound-url')?.value.trim() || "", 
-                    lat: latlng.lat,
-                    lon: latlng.lng,
-                    scale: parseFloat(document.getElementById('place-scale')?.value || "1.0"), 
-                    groundHeight: parseFloat(document.getElementById('place-ground-height')?.value || "0.0"), 
-                    startDate: document.getElementById('place-start-date')?.value || "", 
-                    endDate: document.getElementById('place-end-date')?.value || "" 
-                };
-
-                // Validation
-                if (isNaN(newPoi.scale) || isNaN(newPoi.groundHeight)) throw new Error("Scale/Height must be valid numbers.");
-                if (newPoi.scale <= 0) throw new Error("Scale must be positive.");
-                if (!newPoi.startDate || !newPoi.endDate) throw new Error("Start and End dates are required.");
-                const startDate = new Date(newPoi.startDate);
-                const endDate = new Date(newPoi.endDate);
-                if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) throw new Error("Invalid date format.");
-                if (endDate < startDate) throw new Error("End date cannot be before start date.");
-
-
-                await addDoc(poiCollectionRef, newPoi); 
-                
-                showMessage(`'${newPoi.name}' saved successfully!`, 3000); 
-
-                // --- Remove from 'modelsToPlace' and uncheck checkbox ---
-                 const indexToRemove = currentPlacingModel.originalIndex;
-                 if (indexToRemove >= 0 && indexToRemove < modelsToPlace.length) {
-                       if (modelsToPlace[indexToRemove]?.url === currentPlacingModel.url) {
-                            const removedItem = modelsToPlace.splice(indexToRemove, 1)[0];
-                            let checkboxSelector = removedItem.isCustomVideo 
-                                 ? '#select-video-cb' 
-                                 : `.model-select-cb[data-url="${removedItem.url}"]`;
-                            const checkbox = document.querySelector(checkboxSelector);
-                            if (checkbox) checkbox.checked = false;
-                            console.log("Item removed from modelsToPlace:", removedItem.name);
-                       } else { 
-                            console.error("Index mismatch when removing placed item. Array may have shifted.");
-                            modelsToPlace = modelsToPlace.filter(m => m.url !== currentPlacingModel.url);
-                       }
-                 } else { 
-                      console.error("Invalid original index found when trying to remove placed item:", indexToRemove);
-                       modelsToPlace = modelsToPlace.filter(m => m.url !== currentPlacingModel.url);
-                 }
-
-                populatePlacementPanel(); 
-                cancelPlacement(); 
-
-            } catch (error) { 
-                 console.error("Error saving POI: ", error);
-                 showMessage("Error saving: " + error.message, 5000);
-            } finally { 
-                 if (savePlacementBtn) { 
-                    savePlacementBtn.disabled = false; 
-                    savePlacementBtn.textContent = 'Save Location (at Crosshair)'; 
-                 }
-            }
-         }
          
          function populateSummaryPage() {
              console.log("Populating Summary Page..."); 
@@ -1305,7 +1442,7 @@
                  `;
                  summaryPoiList.appendChild(summaryElement);
              });
-             console.log(`Summary populated with ${allPoisData.length} POIs.`);
+                 console.log(`Summary populated with ${allPoisData.length} POIs.`);
          }
 
          async function startARFlow() { 
@@ -1463,9 +1600,23 @@
             
             // Add lights 
              let ambientLight = arScene.querySelector('a-light[type="ambient"]'); 
-             if (!ambientLight) { /* ... create ambient ... */ }
+             if (!ambientLight) { 
+                  ambientLight = document.createElement('a-light');
+                  ambientLight.setAttribute('type', 'ambient');
+                  ambientLight.setAttribute('color', '#BBB'); 
+                  ambientLight.setAttribute('intensity', '0.7'); 
+                  arScene.appendChild(ambientLight);
+             }
              let directionalLight = arScene.querySelector('a-light[type="directional"]'); 
-             if (!directionalLight) { /* ... create directional ... */ }
+             if (!directionalLight) { 
+                  directionalLight = document.createElement('a-light');
+                  directionalLight.setAttribute('type', 'directional');
+                  directionalLight.setAttribute('color', '#FFF');
+                  directionalLight.setAttribute('intensity', '0.8'); 
+                  directionalLight.setAttribute('position', '-1 2 1.5'); 
+                  directionalLight.setAttribute('castShadow', 'true'); 
+                  arScene.appendChild(directionalLight);
+              }
 
             arSceneContainer.appendChild(arScene); 
             
@@ -1477,7 +1628,11 @@
                 startGPSWatch(); 
                 showMessage("AR Scene Ready! Waiting for GPS signal...", 3000);
             });
-            arScene.addEventListener('error', (err) => { /* ... error handling ... */ });
+            arScene.addEventListener('error', (err) => { 
+                 console.error("A-Frame scene error:", err);
+                 showMessage("Error loading AR scene.", 5000);
+                 navigateTo('summary');
+            });
              arScene.addEventListener('arjs-video-loaded', (ev) => { console.log("AR.js video stream loaded.", ev); }); 
              arScene.addEventListener('gps-camera-origin-coord-set', (ev) => { console.log("AR.js GPS origin set.", ev.detail); }); 
 
@@ -1485,7 +1640,7 @@
 
         function stopAR() { 
              console.log("Stopping AR..."); 
-            if (gpsWatchId) { /* ... clear watch ... */ }
+            if (gpsWatchId) { navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; }
             if (arScene) {
                  try {
                      arScene.pause(); 
@@ -1618,16 +1773,20 @@
              cancelEditLocationBtn = document.getElementById('cancel-edit-location-btn');
              summaryPoiList = document.getElementById('summary-poi-list');
              loadingSummaryPois = document.getElementById('loading-summary-pois');
-             mapCenterCoordsEl = document.getElementById('map-center-coords'); // Ref display coords
-             placementPreviewImageEl = document.getElementById('placement-preview-image'); // Ref img preview
+             mapCenterCoordsEl = document.getElementById('map-center-coords'); 
+             placementPreviewImageEl = document.getElementById('placement-preview-image'); 
 
              console.log("DOM element references obtained.");
 
              // --- Initialize App ---
+             // CORRECCIÓN: Ejecutar estas funciones ANTES de Firebase
+             // para que la UI se muestre incluso si Firebase falla.
              displayAppVersion(); 
-             initializeFirebase(); 
              initializeModelSelection(); 
              setupNavigationListeners(); 
+
+             // Inicializar Firebase al final, ya que es la parte que falla
+             initializeFirebase(); 
          });
 
     </script>
