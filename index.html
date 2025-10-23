@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-M">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Panel de Administración AR (Geolocalización)</title>
     <!-- Favicon -->
@@ -10,7 +10,7 @@
     <!-- A-Frame y AR.js -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    
+
     <!-- Leaflet.js -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -33,7 +33,7 @@
             animation: spin 1s linear infinite; margin-bottom: 20px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
+
         .control-button {
             background-color: #4CAF50; color: white; padding: 10px 20px;
             border: none; border-radius: 8px; font-size: 16px;
@@ -62,6 +62,7 @@
          .delete-btn-map.confirm:hover:not(:disabled) {
              background-color: #f57c00;
          }
+
          /* Style for the new back button */
          .secondary-action-btn {
             background-color: #607d8b; /* Blue Grey */
@@ -75,10 +76,9 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-top: 8px; /* Add some space */
          }
-          .secondary-action-btn:hover:not(:disabled) {
+         .secondary-action-btn:hover:not(:disabled) {
              background-color: #546e7a;
          }
-
 
         #message-box {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
@@ -88,12 +88,12 @@
             pointer-events: none;
         }
         #message-box.show { opacity: 1; }
-        
+
         /* Estilos de Mapa y AR (adaptados) */
         #map-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         #map-canvas { width: 100%; height: 100%; z-index: 1; cursor: grab; }
         #map-controls { position: fixed; top: 20px; right: 20px; z-index: 402; display: flex; flex-direction: column; gap: 10px; }
-        
+
         #map-crosshair {
             position: absolute !important; 
             top: 50% !important; 
@@ -107,79 +107,78 @@
             pointer-events: none !important; 
             z-index: 1000 !important; 
         }
-        
+
         #coords-jumpto {
             position: fixed; top: 20px; left: 20px; z-index: 402;
             background-color: rgba(255, 255, 255, 0.9);
             padding: 10px; border-radius: 8px; display: flex; gap: 5px; align-items: center;
         }
         #map-center-coords {
-             position: fixed;
+             position: fixed; 
              top: 75px; 
-             left: 20px;
-             z-index: 402;
+             left: 20px; 
+             z-index: 402; 
              background-color: rgba(0, 0, 0, 0.75); 
-             color: white;
-             padding: 8px 12px;
-             border-radius: 8px;
-             font-size: 0.8rem;
-             font-family: monospace;
+             color: white; 
+             padding: 8px 12px; 
+             border-radius: 8px; 
+             font-size: 0.8rem; 
+             font-family: monospace; 
              box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
         #map-center-coords span { display: block; } 
 
         /* Panels on Map */
         .map-panel {
-             position: fixed;
+             position: fixed; 
              top: 80px; 
-             left: 10px;
+             left: 10px; 
              z-index: 401; 
-             background-color: rgba(255, 255, 255, 0.95);
-             padding: 15px;
-             border-radius: 8px;
-             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-             max-width: 300px;
-             width: 90%;
+             background-color: rgba(255, 255, 255, 0.95); 
+             padding: 15px; 
+             border-radius: 8px; 
+             box-shadow: 0 2px 10px rgba(0,0,0,0.2); 
+             max-width: 300px; 
+             width: 90%; 
              max-height: calc(100vh - 180px); 
-             overflow-y: auto;
+             overflow-y: auto; 
              backdrop-filter: blur(5px);
-        }
-         #edit-location-panel {
+        } 
+        #edit-location-panel {
              border: 2px solid #f59e0b; 
-         }
-         #placed-pois-panel {
+         } 
+        #placed-pois-panel {
              left: auto; 
              right: 10px; 
-         }
-         #placement-preview-image {
-             max-width: 100px;
-             max-height: 100px;
+         } 
+        #placement-preview-image {
+             max-width: 100px; 
+             max-height: 100px; 
              margin: 10px auto; 
-             border: 1px solid #ccc;
-             border-radius: 4px;
+             border: 1px solid #ccc; 
+             border-radius: 4px; 
              display: none; 
              object-fit: contain; 
          }
         .leaflet-popup-content img.popup-image {
-             max-width: 100px;
-             max-height: 100px;
-             display: block;
-             margin: 5px auto;
-             border-radius: 4px;
+             max-width: 100px; 
+             max-height: 100px; 
+             display: block; 
+             margin: 5px auto; 
+             border-radius: 4px; 
          }
-
 
         a-scene { position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; z-index: 1 !important; }
         .arjs-loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); color: white; display: none; flex-direction: column; justify-content: center; align-items: center; font-size: 1.5rem; z-index: 10000; text-align: center; }
         .permission-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); display: none; justify-content: center; align-items: center; z-index: 10001; }
         .permission-content { background-color: white; padding: 20px; border-radius: 10px; max-width: 80%; text-align: center; }
         .permission-button { background-color: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 15px; }
-        
+
         #ar-controls { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 10px; }
         .ar-info-panel { position: fixed; top: 20px; left: 20px; background-color: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 8px; font-size: 14px; z-index: 9998; }
         .ar-loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #1a2a6c, #2a5298); color: white; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 10002; }
         .ar-loading-screen.active { display: flex; }
-        
+
         /* Video AR styles */
         a-video { border: 2px solid white; background-color: black; }
 
@@ -239,7 +238,7 @@
                 <h2 class="text-2xl font-semibold mb-4">Contenido Geoposicionado Guardado</h2>
                 <div id="poi-list-container" class="space-y-4">
                     <p id="loading-pois" class="text-gray-500 font-semibold">Inicializando Firebase...</p> 
-                </div>
+                 </div>
             </div>
         </div>
     </div>
@@ -249,19 +248,17 @@
         <div id="map-container">
             <div id="map-canvas"></div>
             <div id="map-crosshair"></div> 
-        </div>
+         </div>
 
         <div id="coords-jumpto">
             <input type="number" id="jumpto-lat" placeholder="Latitud" class="w-24 p-1 border rounded text-sm">
             <input type="number" id="jumpto-lon" placeholder="Longitud" class="w-24 p-1 border rounded text-sm">
             <button id="jumpto-btn" class="control-button bg-blue-500 hover:bg-blue-600 p-2 text-sm">Ir</button>
-        </div>
-        
-         <div id="map-center-coords">
+        </div> 
+                 <div id="map-center-coords">
              <span>Lat: --</span>
              <span>Lon: --</span>
          </div>
-
 
         <!-- Panel de Colocación (Izquierda) -->
         <div id="placement-panel" class="map-panel">
@@ -279,7 +276,7 @@
             <!-- Formulario para configurar el POI (inicialmente oculto) -->
             <div id="placement-form-container" class="hidden space-y-3">
                 <h4 id="placing-model-name" class="font-semibold text-blue-600 text-center text-lg mb-2"></h4>
-                
+                                 
                  <img id="placement-preview-image" src="" alt="Vista previa">
 
                  <div>
@@ -297,7 +294,7 @@
                      </div>
                  </div>
                  <div id="video-fields" class="hidden"> 
-                     <div>
+                      <div>
                          <label for="place-video-url" class="block text-sm font-medium text-gray-700">URL Video (.mp4)</label>
                          <input type="url" id="place-video-url" class="mt-1 w-full p-2 border border-gray-300 rounded" placeholder="https://.../video.mp4">
                      </div>
@@ -333,13 +330,13 @@
                     Guardar Ubicación (en la Cruz)
                 </button>
                 <button id="back-to-selection-btn" class="w-full secondary-action-btn hover:bg-gray-600">Volver a Seleccionar Modelo</button>
-                <button id="cancel-placement-btn" class="w-full bg-gray-500 hover:bg-gray-600 text-white p-2 rounded transition duration-300 mt-2">Cancelar Colocación Total</button> 
-            </div>
+                <button id="cancel-placement-btn" class="w-full bg-gray-500 hover:bg-gray-600 text-white p-2 rounded transition duration-300 mt-2">Cancelar Colocación Total</button>
+             </div>
         </div>
         
          <!-- Panel de POIs Guardados (Derecha) -->
-         <div id="placed-pois-panel" class="map-panel right-3"> 
-             <h3 class="text-lg font-semibold mb-2">Contenido en el Mapa</h3>
+         <div id="placed-pois-panel" class="map-panel right-3">
+              <h3 class="text-lg font-semibold mb-2">Contenido en el Mapa</h3>
               <p class="text-xs text-amber-700 mb-2">Datos guardados en Firebase.</p>
              <div id="placed-pois-list" class="space-y-3">
                  <p class="text-sm text-gray-500">Cargando contenido guardado...</p>
@@ -360,11 +357,10 @@
              </button>
          </div>
 
-
         <div id="map-controls">
             <button id="back-to-admin-btn" class="control-button bg-gray-500 hover:bg-gray-600">Volver al Panel</button>
             <button id="goto-summary-btn" class="control-button bg-purple-500 hover:bg-purple-600">Ver Resumen</button> 
-        </div>
+         </div>
     </div>
 
     <!-- PÁGINA 3: Resumen y Lanzamiento AR (NUEVA) -->
@@ -375,7 +371,7 @@
                  <div>
                      <button id="back-to-map-btn" class="control-button bg-gray-500 hover:bg-gray-600">Volver al Mapa</button>
                      <button id="launch-ar-btn" class="control-button bg-green-500 hover:bg-green-600">¡Probar AR!</button> 
-                 </div>
+                  </div>
              </div>
              <div class="bg-white p-6 rounded-lg shadow-md">
                  <h2 class="text-2xl font-semibold mb-4">Contenido Configurado</h2>
@@ -387,7 +383,6 @@
          </div>
     </div>
 
-
     <!-- PÁGINA 4: Vista de Realidad Aumentada -->
     <div id="ar-page" class="page">
         <div id="ar-loading-screen" class="ar-loading-screen active">
@@ -398,14 +393,14 @@
         </div>
 
         <div id="ar-scene-container"></div>
-        
+
         <div class="ar-info-panel">
             <div><strong>GPS:</strong> <span id="gps-status">Buscando...</span></div>
             <div><strong>Precisión:</strong> <span id="gps-accuracy" style="font-weight: bold;">--</span>m</div>
         </div>
         <div id="ar-controls">
             <button id="back-to-summary-btn" class="control-button bg-gray-500 hover:bg-gray-600">Volver al Resumen</button> 
-        </div>
+         </div>
     </div>
 
     <!-- Modal para solicitar permisos -->
@@ -435,12 +430,10 @@
             getDocs,
             query,
             setLogLevel 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Versión de la App ---
         const APP_VERSION = '1.29'; // Added Firebase Logging
-
         // LocalStorage Key
         const LOCALSTORAGE_KEY = 'arAdminModelSelection';
 
@@ -460,13 +453,13 @@
         // --- Configuración de Firebase ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; 
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        const firebaseConfig = {
-         apiKey: "AIzaSyBkxP7vqrVZMRhl-vUpHMMKjj5aIujDQ3k",
-         authDomain: "centro-comercial-1ea64.firebaseapp.com",
-         projectId: "centro-comercial-1ea64",
+        const firebaseConfig = { 
+         apiKey: "AIzaSyBkxP7vqrVZMRhl-vUpHMMKjj5aIujDQ3k", 
+         authDomain: "centro-comercial-1ea64.firebaseapp.com", 
+         projectId: "centro-comercial-1ea64", 
          storageBucket: "centro-comercial-1ea64.appspot.com", 
-         messagingSenderId: "667808330264",
-         appId: "1:667808330264:web:9718955b58aba4359b096d",
+         messagingSenderId: "667808330264", 
+         appId: "1:667808330264:web:9718955b58aba4359b096d", 
          measurementId: "G-3ZPG0Q8FL6"
         };
 
@@ -530,49 +523,49 @@
             console.log(`Navigating to: ${pageName}`);
             Object.values(pages).forEach(p => p.classList.remove('active'));
             if(pages[pageName]) {
-                pages[pageName].classList.add('active');
-                 console.log(`Page ${pageName} activated.`);
-            } else {
-                 console.error(`Page not found: ${pageName}. Falling back to admin.`);
-                 if (pages.admin) pages.admin.classList.add('active'); 
+                pages[pageName].classList.add('active'); 
+                console.log(`Page ${pageName} activated.`);
+            } else { 
+                console.error(`Page not found: ${pageName}. Falling back to admin.`); 
+                if (pages.admin) pages.admin.classList.add('active'); 
                  return;
             }
 
             // Page specific logic
-            if (pageName === 'map') {
-                 stopAR(); 
+            if (pageName === 'map') { 
+                stopAR(); 
                 setTimeout(initMap, 100); 
-            } else if (pageName === 'summary') {
-                 stopAR(); 
+            } else if (pageName === 'summary') { 
+                stopAR(); 
                  stopMap(); 
                  populateSummaryPage(); 
-            } else if (pageName === 'ar') {
-                 stopMap(); 
+            } else if (pageName === 'ar') { 
+                stopMap(); 
                 startARFlow(); 
-            } else if (pageName === 'admin') {
-                 stopAR();
-                 stopMap();
-                 initializeModelSelection(); 
+            } else if (pageName === 'admin') { 
+                stopAR(); 
+                stopMap(); 
+                initializeModelSelection(); 
             }
         }
 
         function stopMap() {
             // ... (no changes) ...
-            if (map) {
-                 map.off('move', updateCenterCoordsDisplay);
-                 if (placedPoisList) {
-                    placedPoisList.removeEventListener('click', handleDeletePoiOnMap);
-                 }
-                 map.remove(); 
-                 map = null;
-                 Object.values(poiMarkers).forEach(marker => marker.remove());
-                 poiMarkers = {}; 
+            if (map) { 
+                map.off('move', updateCenterCoordsDisplay); 
+                if (placedPoisList) {
+                   placedPoisList.removeEventListener('click', handleDeletePoiOnMap);
+                } 
+                map.remove(); 
+                 map = null; 
+                Object.values(poiMarkers).forEach(marker => marker.remove()); 
+                poiMarkers = {}; 
                  console.log("Map stopped and removed.");
-            }
-             isPlacingModel = false;
-             isEditingLocation = false;
-             currentEditingPoiId = null;
-             currentEditingMarker = null;
+            } 
+            isPlacingModel = false; 
+            isEditingLocation = false; 
+            currentEditingPoiId = null; 
+            currentEditingMarker = null;
         }
 
         // --- Persistence Functions ---
@@ -600,150 +593,148 @@
                     modelsToPlace = []; // Reset to empty
                 }
             } else {
-                modelsToPlace = []; // Initialize empty if nothing saved
-                 console.log("No selection found in localStorage, initializing empty.");
+                modelsToPlace = []; // Initialize empty if nothing saved 
+                console.log("No selection found in localStorage, initializing empty.");
             }
         }
 
-        function clearSavedSelection() {
-             // ... (no changes) ...
-             localStorage.removeItem(LOCALSTORAGE_KEY);
-             modelsToPlace = [];
-             initializeModelSelection(); // Update UI immediately
-             showMessage("Selección guardada limpiada.", 2000);
+        function clearSavedSelection() { 
+             // ... (no changes) ... 
+             localStorage.removeItem(LOCALSTORAGE_KEY); 
+             modelsToPlace = []; 
+             initializeModelSelection(); // Update UI immediately 
+             showMessage("Selección guardada limpiada.", 2000); 
              console.log("Cleared saved selection.");
         }
 
-
         // --- Firebase Logic ---
         async function initializeFirebase() { 
-            // ADDED LOGGING
+             // ADDED LOGGING
             console.log("Initializing Firebase..."); 
             if (loadingPois) loadingPois.textContent = "Inicializando conexión Firebase...";
             if (gotoMapButton) gotoMapButton.disabled = true; 
 
-            if (!firebaseConfig || !firebaseConfig.projectId) {
-                 const errorMsg = "Error fatal: Configuración de Firebase inválida o incompleta.";
-                 console.error(errorMsg, firebaseConfig);
-                 if(loadingPois) loadingPois.textContent = errorMsg;
-                 showMessage(errorMsg, 10000); 
+            if (!firebaseConfig || !firebaseConfig.projectId) { 
+                const errorMsg = "Error fatal: Configuración de Firebase inválida o incompleta."; 
+                console.error(errorMsg, firebaseConfig); 
+                if(loadingPois) loadingPois.textContent = errorMsg; 
+                showMessage(errorMsg, 10000); 
                  return; 
             }
             
-            try {
-                 console.log("Calling initializeApp...");
-                 const app = initializeApp(firebaseConfig); 
+            try { 
+                console.log("Calling initializeApp...");
+                const app = initializeApp(firebaseConfig); 
                  console.log("Firebase App initialized.");
-                 db = getFirestore(app);
-                 auth = getAuth(app);
-                 console.log("Firestore and Auth services obtained.");
-                 setLogLevel('Debug'); 
+                db = getFirestore(app); 
+                auth = getAuth(app); 
+                console.log("Firestore and Auth services obtained.");
+                setLogLevel('Debug'); 
                 
                  console.log("Setting up Auth State Listener..."); // ADDED
-                 onAuthStateChanged(auth, async (user) => {
-                     console.log("Auth state changed callback triggered."); // ADDED
-                     if (user) {
-                         userId = user.uid;
-                         console.log('Firebase User Authenticated. UID:', userId); // MODIFIED
-                         
-                         const currentAppId = (appId === 'default-app-id' && firebaseConfig.appId) ? firebaseConfig.appId : appId;
-                         const collectionPath = `/artifacts/${currentAppId}/public/data/pois`;
-                         poiCollectionRef = collection(db, collectionPath);
-                         console.log('POI Collection configured:', collectionPath);
+                onAuthStateChanged(auth, async (user) => {
+                    console.log("Auth state changed callback triggered."); // ADDED
+                    if (user) {
+                        userId = user.uid;
+                        console.log('Firebase User Authenticated. UID:', userId); // MODIFIED
                         
-                         firebaseReady = true; 
+                        const currentAppId = (appId === 'default-app-id' && firebaseConfig.appId) ? firebaseConfig.appId : appId;
+                        const collectionPath = `/artifacts/${currentAppId}/public/data/pois`;
+                        poiCollectionRef = collection(db, collectionPath);
+                        console.log('POI Collection configured:', collectionPath);
+                        
+                        firebaseReady = true; 
                          console.log('Firebase is Ready. Enabling GoToMap button...'); // ADDED
-                         if (gotoMapButton) {
-                             gotoMapButton.disabled = false; 
+                        if (gotoMapButton) {
+                            gotoMapButton.disabled = false; 
                              console.log("GoToMap button ENABLED."); // MODIFIED
-                         } else {
-                             console.warn("GoToMap button not found when trying to enable."); // ADDED
-                         }
-                         if (loadingPois && (loadingPois.textContent.startsWith("Conectando") || loadingPois.textContent.startsWith("Inicializando"))) { 
+                        } else {
+                            console.warn("GoToMap button not found when trying to enable."); // ADDED
+                        }
+                        if (loadingPois && (loadingPois.textContent.startsWith("Conectando") || loadingPois.textContent.startsWith("Inicializando"))) { 
                              loadingPois.textContent = "Conexión exitosa. Cargando POIs..."; 
                          }
-                         showMessage("Conectado a la base de datos.", 2000); 
+                        showMessage("Conectado a la base de datos.", 2000);
                         
-                         console.log('Calling loadAndListenPois...'); // ADDED
-                         loadAndListenPois(); 
+                        console.log('Calling loadAndListenPois...'); // ADDED
+                        loadAndListenPois(); 
                      } else {
-                         userId = null;
-                         poiCollectionRef = null;
-                         firebaseReady = false; 
+                        userId = null;
+                        poiCollectionRef = null;
+                        firebaseReady = false; 
                          console.log('Firebase User signed out or not authenticated.'); // ADDED
-                         if (gotoMapButton) {
-                            gotoMapButton.disabled = true; 
+                        if (gotoMapButton) {
+                           gotoMapButton.disabled = true; 
                             console.log('GoToMap button DISABLED (no user).'); // ADDED
-                         }
-                         if (listContainer) listContainer.innerHTML = '<p class="text-red-500 font-semibold">Error: Autenticación fallida o cerrada.</p>';
-                         allPoisData = []; 
+                        }
+                        if (listContainer) listContainer.innerHTML = '<p class="text-red-500 font-semibold">Error: Autenticación fallida o cerrada.</p>';
+                        allPoisData = []; 
                          poiDataMap.clear(); 
                          console.error("Firebase User signed out or failed authentication.");
-                         showMessage("Error de autenticación con Firebase. No se pueden cargar datos.", 5000);
-                     }
-                 });
-                 console.log("Auth state listener attached.");
+                        showMessage("Error de autenticación con Firebase. No se pueden cargar datos.", 5000);
+                    }
+                });
+                console.log("Auth state listener attached.");
 
-                 // Attempt Sign In
-                 console.log("Attempting sign in..."); // ADDED
-                 try {
-                     if (initialAuthToken) {
-                         console.log("Attempting sign in with custom token...");
-                         await signInWithCustomToken(auth, initialAuthToken);
-                         console.log("Signed in with custom token SUCCESS."); // MODIFIED
-                     } else {
-                         console.log("Attempting anonymous sign in...");
-                         await signInAnonymously(auth);
-                         console.log("Signed in anonymously SUCCESS."); // MODIFIED
-                     }
-                 } catch (authError) {
-                     // Log specific errors
-                     console.error("Firebase Auth Error during sign-in:", authError.code, authError.message); // MODIFIED
-                     firebaseReady = false;
-                     if (gotoMapButton) {
-                         gotoMapButton.disabled = true;
-                         console.log('GoToMap button DISABLED (auth error).'); // ADDED
-                     }
-                     let detailedErrorMsg = `Error de Autenticación: ${authError.code || authError.message}`;
-                     if (authError.code === 'auth/admin-restricted-operation' || authError.code === 'auth/operation-not-allowed') {
-                         detailedErrorMsg += " (VERIFICA: Inicio Anónimo habilitado Y dominio autorizado en Firebase Auth -> Settings)"; // MODIFIED
-                     } else if (authError.message.includes("network")) {
-                         detailedErrorMsg += " (Problema de red)";
-                     }
-                     if (loadingPois) loadingPois.textContent = detailedErrorMsg;
-                     showMessage(detailedErrorMsg, 15000); 
+                // Attempt Sign In
+                console.log("Attempting sign in..."); // ADDED
+                try {
+                    if (initialAuthToken) {
+                        console.log("Attempting sign in with custom token...");
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        console.log("Signed in with custom token SUCCESS."); // MODIFIED
+                    } else {
+                        console.log("Attempting anonymous sign in...");
+                        await signInAnonymously(auth);
+                        console.log("Signed in anonymously SUCCESS."); // MODIFIED
+                    }
+                } catch (authError) {
+                    // Log specific errors
+                    console.error("Firebase Auth Error during sign-in:", authError.code, authError.message); // MODIFIED
+                    firebaseReady = false;
+                    if (gotoMapButton) {
+                        gotoMapButton.disabled = true;
+                        console.log('GoToMap button DISABLED (auth error).'); // ADDED
+                    }
+                    let detailedErrorMsg = `Error de Autenticación: ${authError.code || authError.message}`;
+                    if (authError.code === 'auth/admin-restricted-operation' || authError.code === 'auth/operation-not-allowed') {
+                        detailedErrorMsg += " (VERIFICA: Inicio Anónimo habilitado Y dominio autorizado en Firebase Auth -> Settings)"; // MODIFIED
+                    } else if (authError.message.includes("network")) {
+                        detailedErrorMsg += " (Problema de red)";
+                    }
+                    if (loadingPois) loadingPois.textContent = detailedErrorMsg;
+                    showMessage(detailedErrorMsg, 15000); 
                  }
 
-            } catch (initError) {
-                 console.error("Firebase Initialization Error:", initError); // MODIFIED
-                 firebaseReady = false; 
-                 if (gotoMapButton) {
-                     gotoMapButton.disabled = true;
-                      console.log('GoToMap button DISABLED (init error).'); // ADDED
-                 }
-                 const errorMsg = `Error fatal al inicializar Firebase: ${initError.message}. Verifica la config y la conexión.`;
-                 if(loadingPois) loadingPois.textContent = errorMsg;
-                 showMessage(errorMsg, 10000); 
+            } catch (initError) { 
+                console.error("Firebase Initialization Error:", initError); // MODIFIED
+                firebaseReady = false; 
+                 if (gotoMapButton) { 
+                    gotoMapButton.disabled = true; 
+                     console.log('GoToMap button DISABLED (init error).'); // ADDED
+                }
+                const errorMsg = `Error fatal al inicializar Firebase: ${initError.message}. Verifica la config y la conexión.`;
+                if(loadingPois) loadingPois.textContent = errorMsg;
+                showMessage(errorMsg, 10000);
             }
         }
         
         function displayAppVersion() {
              // ... (no changes) ...
              if (versionDisplay) {
-                 versionDisplay.textContent = `v${APP_VERSION}`;
-                  console.log(`App Version ${APP_VERSION} displayed.`);
-             } else {
-                  console.warn("Version display element not found.");
+                 versionDisplay.textContent = `v${APP_VERSION}`; 
+                 console.log(`App Version ${APP_VERSION} displayed.`);
+             } else { 
+                 console.warn("Version display element not found.");
              }
         }
-
 
         function initializeModelSelection() {
              // ... (no changes) ...
              console.log("Initializing model selection UI based on current modelsToPlace:", modelsToPlace); 
-             if (!ecopiensaSelectionList || !loadingModelsPlaceholder || !selectVideoCheckbox) {
-                  console.error("Required elements for model selection not found.");
-                  return; 
+             if (!ecopiensaSelectionList || !loadingModelsPlaceholder || !selectVideoCheckbox) { 
+                 console.error("Required elements for model selection not found."); 
+                 return; 
              }
 
             loadingModelsPlaceholder.style.display = 'none'; 
@@ -751,10 +742,10 @@
             ecopiensaSelectionList.innerHTML = ''; 
             ECOPIENSA_MODELS.forEach(model => {
                 // Check if currently selected in modelsToPlace state
-                const isSelected = modelsToPlace.some(m => !m.isCustomVideo && m.url === model.modelUrl); 
-                createCheckbox(model.name, model.modelUrl, isSelected, false, model.imageUrl); 
+                const isSelected = modelsToPlace.some(m => !m.isCustomVideo && m.url === model.modelUrl);
+                 createCheckbox(model.name, model.modelUrl, isSelected, false, model.imageUrl); 
             });
-             console.log("Model checkboxes created/updated based on modelsToPlace.");
+             console.log("Model checkboxes created/updated based on modelsToPlace."); 
             
             selectVideoCheckbox.removeEventListener('change', handleVideoCheckboxChange);
             selectVideoCheckbox.addEventListener('change', handleVideoCheckboxChange);
@@ -775,18 +766,18 @@
              input.className = 'model-select-cb h-5 w-5 text-blue-600';
              input.dataset.name = name;
              input.dataset.url = url; 
-             input.checked = isChecked;
+             input.checked = isChecked; 
              input.dataset.imageUrl = imageUrl; 
              if (isVideoPlaceholder) {
                  input.dataset.isCustomVideo = "true";
-             }
-            
+             } 
+             
              input.removeEventListener('change', handleCheckboxChange); 
              input.addEventListener('change', handleCheckboxChange); 
 
              const span = document.createElement('span');
              span.textContent = name;
-            
+             
              label.appendChild(input);
              label.appendChild(span);
              ecopiensaSelectionList.appendChild(label);
@@ -817,7 +808,7 @@
                  imageUrl: e.target.dataset.imageUrl || '' 
              };
              const itemExists = modelsToPlace.some(m => m.url === itemData.url); 
-            
+             
              if (e.target.checked) {
                  if (!itemExists) {
                      modelsToPlace.push(itemData);
@@ -831,29 +822,28 @@
              console.log("Models to place updated:", modelsToPlace);
          }
 
-
         function loadAndListenPois() {
              // ... (no changes) ...
              if (!poiCollectionRef) { 
-                 console.warn("loadAndListenPois called before poiCollectionRef is set.");
-                  if (loadingPois && !loadingPois.textContent.toLowerCase().includes("error")) loadingPois.textContent = "Esperando configuración de base de datos...";
-                  return; 
+                 console.warn("loadAndListenPois called before poiCollectionRef is set."); 
+                 if (loadingPois && !loadingPois.textContent.toLowerCase().includes("error")) loadingPois.textContent = "Esperando configuración de base de datos..."; 
+                 return; 
              }
              if (!listContainer || !loadingPois) { 
-                  console.error("loadAndListenPois called but listContainer or loadingPois element not found.");
-                  return; 
+                  console.error("loadAndListenPois called but listContainer or loadingPois element not found."); 
+                 return; 
              }
-            
+             
              if (loadingPois && !loadingPois.textContent.toLowerCase().includes("error")) {
                  loadingPois.textContent = "Cargando puntos guardados..."; 
                  loadingPois.style.display = 'block'; 
              }
              const q = query(poiCollectionRef);
-            
+             
              onSnapshot(q, (querySnapshot) => {
                  console.log("Firestore snapshot received."); 
                  if (!listContainer || !loadingPois) return; 
-                
+                 
                  loadingPois.style.display = 'none'; 
                  allPoisData = []; 
                  poiDataMap.clear(); 
@@ -863,12 +853,12 @@
                  }
 
                  if (querySnapshot.empty) {
-                     console.log("Query snapshot is empty.");
-                      if (pages.admin?.classList.contains('active')) {
+                     console.log("Query snapshot is empty."); 
+                     if (pages.admin?.classList.contains('active')) {
                         listContainer.innerHTML = '<p class="text-gray-500">No hay contenido guardado en Firebase.</p>';
-                     }
-                      if (map && pages.map?.classList.contains('active')) {
-                           updateMapMarkersAndPlacedList(); 
+                     } 
+                     if (map && pages.map?.classList.contains('active')) { 
+                          updateMapMarkersAndPlacedList(); 
                       }
                      return;
                  }
@@ -883,8 +873,8 @@
                          const poiElement = document.createElement('div');
                          poiElement.className = 'poi-item p-4 border border-gray-200 rounded-lg shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4 items-center';
                          let typeLabel = poi.poiType === 'video' ? 'Video' : 'Modelo 3D';
-                         let urlToShow = poi.poiType === 'video' ? (poi.videoUrl || 'N/A') : (poi.modelUrl || 'N/A');
-                          if (urlToShow.length > 30) urlToShow = urlToShow.substring(0, 27) + '...'; 
+                         let urlToShow = poi.poiType === 'video' ? (poi.videoUrl || 'N/A') : (poi.modelUrl || 'N/A'); 
+                         if (urlToShow.length > 30) urlToShow = urlToShow.substring(0, 27) + '...'; 
 
                          poiElement.innerHTML = `
                              <div>
@@ -910,7 +900,7 @@
                      }
                  });
                  
-                 console.log(`Local cache 'allPoisData' updated with ${allPoisData.length} POIs.`);
+                 console.log(`Local cache 'allPoisData' updated with ${allPoisData.length} POIs.`); 
                  
                  // Update map if it's active
                  if (map && pages.map?.classList.contains('active')) {
@@ -936,12 +926,12 @@
              console.log("Initializing Map..."); 
              if (!firebaseReady || !poiCollectionRef) { 
                  showMessage("La base de datos no está lista. Por favor espere...", 3000);
-                 console.warn("Attempted to initMap before Firebase was ready.");
-                 return; 
+                console.warn("Attempted to initMap before Firebase was ready.");
+                return; 
              }
              if (map) { 
                  console.log("Map already exists. Invalidating size.");
-                 setTimeout(() => { if (map) map.invalidateSize(); }, 100); 
+                setTimeout(() => { if (map) map.invalidateSize(); }, 100); 
                  populatePlacementPanel(); 
                  updateMapMarkersAndPlacedList(); 
                  return; 
@@ -950,12 +940,11 @@
             const mapContainer = document.getElementById('map-canvas');
              if (!mapContainer) { console.error("Map container element not found."); return; }
              const defaultCenter = [4.0835, -76.1915]; 
-             map = L.map(mapContainer, { zoomControl: false, preferCanvas: true }).setView(defaultCenter, 15);
+            map = L.map(mapContainer, { zoomControl: false, preferCanvas: true }).setView(defaultCenter, 15);
 
              L.tileLayer('https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: 'Imagery &copy;2025 Google' }).addTo(map);
 
              updateMapMarkersAndPlacedList(); // Initial population
-
              populatePlacementPanel(); // Populate available models
              cancelPlacement(); // Ensure placement form is hidden initially
              cancelEditLocation(); // Ensure edit form is hidden initially
@@ -972,11 +961,11 @@
              }
              map.off('zoomend', handleMapZoomEnd); 
              map.on('zoomend', handleMapZoomEnd);
-            
+             
              if (jumptoBtn) { 
                  jumptoBtn.removeEventListener('click', jumpToCoords); 
-                 jumptoBtn.addEventListener('click', jumpToCoords);
-              }
+                 jumptoBtn.addEventListener('click', jumpToCoords); 
+             }
 
              if (placePoiTypeSelect) { 
                  placePoiTypeSelect.removeEventListener('change', handlePoiTypeChange);
@@ -985,11 +974,10 @@
               }
              
              if (placedPoisList) {
-                placedPoisList.removeEventListener('click', handleDeletePoiOnMap); 
+               placedPoisList.removeEventListener('click', handleDeletePoiOnMap);
                 placedPoisList.addEventListener('click', handleDeletePoiOnMap);
-                console.log("Delete listener attached to placed POIs list on map.");
-             }
-
+               console.log("Delete listener attached to placed POIs list on map.");
+            }
 
              setTimeout(() => { if (map) map.invalidateSize(); }, 200); 
              console.log("Map initialization complete.");
@@ -1003,13 +991,13 @@
                      <span>Lat: ${center.lat.toFixed(6)}</span>
                      <span>Lon: ${center.lng.toFixed(6)}</span>
                  `;
-             } else if (!mapCenterCoordsEl) {
-                  if (typeof mapCenterCoordsEl === 'undefined' || mapCenterCoordsEl === null) {
-                      if(!window.mapCenterCoordsElWarned) {
+             } else if (!mapCenterCoordsEl) { 
+                 if (typeof mapCenterCoordsEl === 'undefined' || mapCenterCoordsEl === null) {
+                     if(!window.mapCenterCoordsElWarned) {
                          // console.warn("mapCenterCoordsEl not found during update."); 
                          window.mapCenterCoordsElWarned = true; 
-                      }
-                  }
+                      } 
+                 }
              }
          }
 
@@ -1020,47 +1008,47 @@
                  return;
              }
              console.log("Updating map markers and placed POIs list...");
-            
-             Object.values(poiMarkers).forEach(marker => {
-                  if (map.hasLayer(marker)) map.removeLayer(marker);
-             });
+             
+             Object.values(poiMarkers).forEach(marker => { 
+                 if (map.hasLayer(marker)) map.removeLayer(marker);
+            });
              poiMarkers = {}; 
              placedPoisList.innerHTML = ''; 
-            
+             
              let hasPois = false;
              allPoisData.forEach(poi => { 
                  hasPois = true;
-                 if (typeof poi.lat === 'number' && typeof poi.lon === 'number') {
-                      let iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png'; 
+                 if (typeof poi.lat === 'number' && typeof poi.lon === 'number') { 
+                     let iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png'; 
                       if (poi.poiType === 'video') {
-                         iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png'; 
-                      }
-                      
-                      let popupImageUrl = '';
-                      if (poi.poiType === 'model' && poi.modelUrl) {
-                          const ecoModel = ECOPIENSA_MODELS.find(m => m.modelUrl === poi.modelUrl);
-                          if (ecoModel) popupImageUrl = ecoModel.imageUrl;
-                      } else if (poi.poiType === 'video') {
-                          popupImageUrl = CUSTOM_VIDEO_PLACEHOLDER.imageUrl; 
+                        iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png'; 
+                      } 
+                     
+                     let popupImageUrl = '';
+                     if (poi.poiType === 'model' && poi.modelUrl) {
+                         const ecoModel = ECOPIENSA_MODELS.find(m => m.modelUrl === poi.modelUrl);
+                         if (ecoModel) popupImageUrl = ecoModel.imageUrl;
+                     } else if (poi.poiType === 'video') {
+                         popupImageUrl = CUSTOM_VIDEO_PLACEHOLDER.imageUrl; 
                       }
 
-                      let popupContent = `<b>${poi.name || 'No Name'}</b> (${poi.poiType || 'model'})`;
-                      if (popupImageUrl) {
-                          popupContent += `<br><img src="${popupImageUrl}" alt="Preview" class="popup-image" onerror="this.style.display='none'">`;
-                      }
+                     let popupContent = `<b>${poi.name || 'No Name'}</b> (${poi.poiType || 'model'})`;
+                     if (popupImageUrl) {
+                         popupContent += `<br><img src="${popupImageUrl}" alt="Preview" class="popup-image" onerror="this.style.display='none'">`;
+                     }
 
                      const marker = L.marker([poi.lat, poi.lon], { 
                           icon: L.icon({
-                               iconUrl: iconUrl,
-                               shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                               iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-                          })
+                              iconUrl: iconUrl,
+                              shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                              iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+                         })
                      })
                          .addTo(map)
                          .bindPopup(popupContent); 
                      poiMarkers[poi.id] = marker; 
-                 } else { console.warn("POI for map missing coordinates:", poi.id); }
-                
+                 } else { console.warn("POI for map missing coordinates:", poi.id); } 
+                 
                  const listItem = document.createElement('div');
                  listItem.className = 'placed-poi-item p-2 border-b flex justify-between items-center';
                  listItem.innerHTML = `
@@ -1079,23 +1067,22 @@
                  editBtn.addEventListener('click', handleEditLocationClick);
                  placedPoisList.appendChild(listItem);
              });
-            
-             if (!hasPois) {
-                  placedPoisList.innerHTML = '<p class="text-sm text-gray-500">No content saved on map yet.</p>';
+             
+             if (!hasPois) { 
+                 placedPoisList.innerHTML = '<p class="text-sm text-gray-500">No content saved on map yet.</p>';
              }
              console.log(`Updated ${Object.keys(poiMarkers).length} markers and placed POIs panel.`);
         }
-
 
         function handlePoiTypeChange() {
              // ... (no changes) ...
              if (!placePoiTypeSelect || !modelFieldsDiv || !videoFieldsDiv || !placeModelUrlInput || !placeVideoUrlInput) { console.error("POI type change handler missing required form elements."); return; }
              const selectedType = placePoiTypeSelect.value;
              const isVideo = selectedType === 'video';
-            
+             
              modelFieldsDiv.classList.toggle('hidden', isVideo);
-             videoFieldsDiv.classList.toggle('hidden', !isVideo); 
-            
+             videoFieldsDiv.classList.toggle('hidden', !isVideo);
+             
              placeModelUrlInput.disabled = isVideo;
              placeVideoUrlInput.disabled = !isVideo;
 
@@ -1158,11 +1145,11 @@
              } catch (error) {
                  console.error("Error updating location:", error);
                  showMessage("Error guardando nueva ubicación.", 5000);
-             } finally {
-                  if (saveEditLocationBtn) { 
-                      saveEditLocationBtn.disabled = false;
-                      saveEditLocationBtn.textContent = 'Guardar Nueva Ubicación (en la Cruz)';
-                  }
+             } finally { 
+                 if (saveEditLocationBtn) { 
+                     saveEditLocationBtn.disabled = false; 
+                     saveEditLocationBtn.textContent = 'Guardar Nueva Ubicación (en la Cruz)'; 
+                 }
              }
         }
 
@@ -1186,10 +1173,10 @@
                  if (modelsToPlaceList) modelsToPlaceList.innerHTML = '<p class="text-sm text-gray-500">Esperando conexión a base de datos...</p>';
                  return; 
              }
-            
+             
              console.log("Populating placement panel. Current modelsToPlace:", modelsToPlace);
 
-             modelsToPlaceList.innerHTML = ''; // Clear previous buttons
+             modelsToPlaceList.innerHTML = ''; // Clear previous buttons 
              
              // Display buttons for ALL currently selected models (from localStorage state)
              if (modelsToPlace.length === 0) { 
@@ -1205,17 +1192,17 @@
                  button.dataset.url = item.url; 
                  button.dataset.imageUrl = item.imageUrl || ''; 
                  if (item.isCustomVideo) { button.dataset.isCustomVideo = "true"; }
-                
+                 
                  button.removeEventListener('click', handlePlaceButtonClick); 
                  button.addEventListener('click', handlePlaceButtonClick); 
-                
+                 
                  modelsToPlaceList.appendChild(button); 
              });
              console.log(`Populated placement panel with ${modelsToPlace.length} items.`);
         }
         
-        function handlePlaceButtonClick(e) { 
-            // ... (no changes) ...
+        function handlePlaceButtonClick(e) {
+             // ... (no changes) ...
             const targetUrl = e.target.dataset.url;
             // Find data directly from the button's dataset or the original arrays if needed
             const itemData = {
@@ -1228,10 +1215,10 @@
             const itemExistsInState = modelsToPlace.some(m => m.url === targetUrl);
             if (itemExistsInState) {
                 startPlacement(itemData); 
-            } else {
-                 console.error("Attempted to place item no longer in modelsToPlace state:", itemData);
-                 showMessage("Error: Este item ya no está seleccionado.", 4000);
-                 populatePlacementPanel(); // Refresh list
+            } else { 
+                console.error("Attempted to place item no longer in modelsToPlace state:", itemData);
+                showMessage("Error: Este item ya no está seleccionado.", 4000);
+                populatePlacementPanel(); // Refresh list
             }
         }
 
@@ -1242,24 +1229,23 @@
 
             isPlacingModel = true;
             currentPlacingModel = { ...itemData }; // Store the data passed in
-
-             if (placingModelName) placingModelName.textContent = `Posicionando: ${currentPlacingModel.name}`;
+            if (placingModelName) placingModelName.textContent = `Posicionando: ${currentPlacingModel.name}`;
             
-             if (placementPreviewImageEl && itemData.imageUrl) {
-                 console.log("Setting preview image:", itemData.imageUrl);
-                 placementPreviewImageEl.src = itemData.imageUrl;
-                 placementPreviewImageEl.style.display = 'block';
-                 placementPreviewImageEl.onerror = () => { 
-                      console.warn("Could not load preview image:", itemData.imageUrl);
-                      placementPreviewImageEl.style.display = 'none'; 
+            if (placementPreviewImageEl && itemData.imageUrl) {
+                console.log("Setting preview image:", itemData.imageUrl);
+                placementPreviewImageEl.src = itemData.imageUrl;
+                placementPreviewImageEl.style.display = 'block';
+                placementPreviewImageEl.onerror = () => { 
+                      console.warn("Could not load preview image:", itemData.imageUrl); 
+                     placementPreviewImageEl.style.display = 'none'; 
                       placementPreviewImageEl.onerror = null; 
                  };
-             } else if(placementPreviewImageEl) {
-                  console.log("No preview image URL found for this item.");
-                  placementPreviewImageEl.style.display = 'none'; 
-             } else {
-                  console.warn("placementPreviewImageEl not found.");
-             }
+            } else if(placementPreviewImageEl) { 
+                 console.log("No preview image URL found for this item.");
+                 placementPreviewImageEl.style.display = 'none'; 
+             } else { 
+                 console.warn("placementPreviewImageEl not found.");
+            }
 
              if (placePoiTypeSelect) { 
                  placePoiTypeSelect.value = isCustomVideo ? 'video' : 'model';
@@ -1267,7 +1253,7 @@
              }
              if (placeNameInput) placeNameInput.value = currentPlacingModel.name; 
              if (placeModelUrlInput) placeModelUrlInput.value = isCustomVideo ? '' : currentPlacingModel.url;
-             if (placeVideoUrlInput) placeVideoUrlInput.value = isCustomVideo ? '' : ''; 
+             if (placeVideoUrlInput) placeVideoUrlInput.value = isCustomVideo ? '' : '';
              
              const soundUrlInput = document.getElementById('place-sound-url');
              if (soundUrlInput) soundUrlInput.value = '';
@@ -1275,7 +1261,7 @@
              if (scaleInput) scaleInput.value = '1.0';
              const heightInput = document.getElementById('place-ground-height');
              if (heightInput) heightInput.value = '0.0';
-            
+             
             const today = new Date().toISOString().split('T')[0];
             const nextMonth = new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0];
              const startDateInput = document.getElementById('place-start-date');
@@ -1285,10 +1271,9 @@
 
              if (modelsToPlaceList) modelsToPlaceList.classList.add('hidden'); 
              if (placementFormContainer) placementFormContainer.classList.remove('hidden'); 
-            
+             
              showMessage(`Mueve el mapa y presiona 'Guardar Ubicación'`);
         }
-
 
         function cancelPlacement() { 
              // ... (no changes needed here, still resets button and calls populatePlacementPanel) ...
@@ -1309,7 +1294,6 @@
              console.log("Placement cancelled/returned to selection.");
         }
         
-
         async function handleSavePlacement() { 
              // MODIFIED: Does NOT remove item from modelsToPlace or saveSelectionToLocalStorage
              if (!isPlacingModel || !map || !poiCollectionRef || !savePlacementBtn || !currentPlacingModel.url) { 
@@ -1343,15 +1327,15 @@
                      if (!videoUrl) throw new Error("La URL del video es obligatoria para el tipo Video.");
                      if (!videoUrl.startsWith('http') || !videoUrl.toLowerCase().endsWith('.mp4')) {
                          console.warn("El formato de la URL del video podría ser inválido:", videoUrl);
-                     }
-                      modelUrl = ''; 
+                     } 
+                     modelUrl = ''; 
                  } else { 
-                     if (currentPlacingModel.isCustomVideo) {
-                          throw new Error("Error interno: Intentando guardar modelo usando placeholder de video.");
+                     if (currentPlacingModel.isCustomVideo) { 
+                         throw new Error("Error interno: Intentando guardar modelo usando placeholder de video.");
                      }
                      modelUrl = currentPlacingModel.url; 
-                     if (!modelUrl) throw new Error("La URL del modelo es obligatoria para el tipo Modelo 3D.");
-                      videoUrl = ''; 
+                     if (!modelUrl) throw new Error("La URL del modelo es obligatoria para el tipo Modelo 3D."); 
+                     videoUrl = ''; 
                  }
 
                 newPoi = { 
@@ -1377,11 +1361,10 @@
                  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) throw new Error("Formato de fecha inválido.");
                  if (endDate < startDate) throw new Error("La fecha de Fin no puede ser anterior a la de Inicio.");
 
-
                  // Save to Firestore
                  const docRef = await addDoc(poiCollectionRef, newPoi); 
                  console.log("POI saved with ID:", docRef.id);
-                
+                 
                  showMessage(`'${newPoi.name}' guardado exitosamente!`, 3000); 
 
                  // --- DO NOT Remove from 'modelsToPlace' state or localStorage here ---
@@ -1448,7 +1431,7 @@
                  }
              }
          }
-         
+        
          function populateSummaryPage() {
              // ... (no changes) ...
          }
@@ -1456,15 +1439,12 @@
          async function startARFlow() { 
              // ... (no changes) ...
          }
-
-        async function initializeARScene() {
+        async function initializeARScene() { 
              // ... (no changes) ...
         }
-
         function stopAR() { 
              // ... (no changes) ...
         }
-
 
         function onGPSUpdate(event) { 
              // ... (no changes) ...
@@ -1476,13 +1456,79 @@
              // ... (no changes) ...
         }
 
+
+        // =================================================================
+        // --- SECCIÓN CORREGIDA ---
+        // =================================================================
+
          function setupNavigationListeners() {
-             // ... (no changes) ...
+            console.log("Setting up navigation listeners...");
+
+            // --- Página 1: Admin ---
+            const gotoMapBtn = document.getElementById('goto-map-btn');
+            if (gotoMapBtn) {
+                gotoMapBtn.addEventListener('click', handleGoToMap);
+                console.log("Listener added for: goto-map-btn");
+            } else {
+                console.warn("Button not found: goto-map-btn");
+            }
+
+            // --- Página 2: Mapa ---
+            const backToAdminBtn = document.getElementById('back-to-admin-btn');
+            if (backToAdminBtn) {
+                backToAdminBtn.addEventListener('click', handleBackToAdmin);
+                console.log("Listener added for: back-to-admin-btn");
+            } else {
+                console.warn("Button not found: back-to-admin-btn");
+            }
+
+            const gotoSummaryBtn = document.getElementById('goto-summary-btn');
+            if (gotoSummaryBtn) {
+                gotoSummaryBtn.addEventListener('click', handleGoToSummary);
+                console.log("Listener added for: goto-summary-btn");
+            } else {
+                console.warn("Button not found: goto-summary-btn");
+            }
+
+            // --- Página 3: Resumen ---
+            const backToMapBtn = document.getElementById('back-to-map-btn');
+            if (backToMapBtn) {
+                backToMapBtn.addEventListener('click', handleGoToMap); // Reutiliza handleGoToMap
+                console.log("Listener added for: back-to-map-btn");
+            } else {
+                console.warn("Button not found: back-to-map-btn");
+            }
+
+            const launchArBtn = document.getElementById('launch-ar-btn');
+            if (launchArBtn) {
+                launchArBtn.addEventListener('click', handleLaunchAR);
+                console.log("Listener added for: launch-ar-btn");
+            } else {
+                console.warn("Button not found: launch-ar-btn");
+            }
+
+            // --- Página 4: AR ---
+            const backToSummaryBtn = document.getElementById('back-to-summary-btn');
+            if (backToSummaryBtn) {
+                backToSummaryBtn.addEventListener('click', handleBackToSummary);
+                console.log("Listener added for: back-to-summary-btn");
+            } else {
+                console.warn("Button not found: back-to-summary-btn");
+            }
+
+            // --- Modal de Permisos ---
+            const grantPermissionsBtn = document.getElementById('grant-permissions-btn');
+            if (grantPermissionsBtn) {
+                grantPermissionsBtn.addEventListener('click', handleGrantPermissions);
+                console.log("Listener added for: grant-permissions-btn");
+            } else {
+                console.warn("Button not found: grant-permissions-btn");
+            }
          }
 
-         function handleGoToMap() { console.log("goto-map clicked"); navigateTo('map'); }
+         function handleGoToMap() { console.log("goto-map clicked"); navigateTo('map'); } 
          function handleGoToSummary() { console.log("goto-summary clicked"); navigateTo('summary'); } 
-         function handleBackToAdmin() { console.log("back-to-admin clicked"); navigateTo('admin'); }
+         function handleBackToAdmin() { console.log("back-to-admin clicked"); navigateTo('admin'); } 
          function handleLaunchAR() { console.log("launch-ar clicked"); navigateTo('ar'); } 
          function handleBackToSummary() { console.log("back-to-summary clicked"); navigateTo('summary'); } 
          function handleGrantPermissions() { 
@@ -1491,12 +1537,16 @@
              startARFlow(); 
          }
 
+        // =================================================================
+        // --- FIN DE SECCIÓN CORREGIDA ---
+        // =================================================================
 
-        // --- App Initialization (DOMContentLoaded) ---
+
+        // --- App Initialization (DOMContentLoaded) --- 
          document.addEventListener('DOMContentLoaded', () => {
              // ... (resto de asignaciones sin cambios) ...
              console.log("DOM fully loaded and parsed.");
-            
+             
              // Asignar referencias a elementos DOM aquí
              pages.admin = document.getElementById('admin-page');
              pages.map = document.getElementById('map-page');
@@ -1543,13 +1593,16 @@
              console.log("DOM element references obtained.");
 
              loadSelectionFromLocalStorage();
-
              displayAppVersion(); 
              initializeModelSelection(); 
+             
+             // --- CORRECCIÓN AQUÍ ---
+             // Llamar a la función que SÍ tiene el código
              setupNavigationListeners(); 
 
              // Adjuntar listeners de formularios y listas
-             if (cancelPlacementBtn) cancelPlacementBtn.addEventListener('click', () => navigateTo('admin')); 
+             // --- AJUSTE AQUÍ: Usar handleBackToAdmin para consistencia ---
+             if (cancelPlacementBtn) cancelPlacementBtn.addEventListener('click', handleBackToAdmin); 
              if (backToSelectionBtn) backToSelectionBtn.addEventListener('click', cancelPlacement); 
              if (savePlacementBtn) savePlacementBtn.addEventListener('click', handleSavePlacement);
              if (saveEditLocationBtn) saveEditLocationBtn.addEventListener('click', handleSaveEditLocation);
@@ -1595,9 +1648,9 @@
                              showMessage('Punto de interés eliminado.', 3000);
                          } catch (error) {
                              console.error("Error al eliminar documento: ", error);
-                             showMessage("No se pudo eliminar el documento.", 5000);
-                              const currentButton = listContainer?.querySelector(`.delete-btn[data-id="${docId}"]`);
-                              if (currentButton) { 
+                             showMessage("No se pudo eliminar el documento.", 5000); 
+                             const currentButton = listContainer?.querySelector(`.delete-btn[data-id="${docId}"]`); 
+                             if (currentButton) { 
                                  currentButton.disabled = false;
                                  currentButton.textContent = 'Eliminar';
                                  currentButton.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
@@ -1612,7 +1665,6 @@
              // --- Llamar a initializeFirebase DESPUÉS de que el DOM esté listo ---
              initializeFirebase(); 
          });
-
     </script>
 </body>
 </html>
