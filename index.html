@@ -43,7 +43,27 @@
         .control-button:hover:not(:disabled) { background-color: #45a049; } /* Added :not(:disabled) */
         .control-button:disabled { background-color: #a0a0a0; cursor: not-allowed; opacity: 0.7; } /* Added opacity */
 
-        
+        /* Specific button styles */
+        .delete-btn-map { /* New style for map delete button */
+             background-color: #f44336; /* Red */
+             color: white;
+             font-size: 0.75rem; /* text-xs */
+             padding: 0.25rem 0.5rem; /* px-2 py-1 */
+             border-radius: 0.25rem; /* rounded */
+             margin-left: 0.25rem; /* ml-1 */
+             transition: background-color 0.3s;
+        }
+        .delete-btn-map:hover:not(:disabled) {
+             background-color: #d32f2f;
+        }
+         .delete-btn-map.confirm { /* Style for confirm state */
+             background-color: #ff9800; /* Orange */
+         }
+         .delete-btn-map.confirm:hover:not(:disabled) {
+             background-color: #f57c00;
+         }
+
+
         #message-box {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
             background-color: rgba(0, 0, 0, 0.7); color: white;
@@ -323,7 +343,7 @@
               <p class="text-xs text-amber-700 mb-2">Datos guardados en Firebase.</p>
              <div id="placed-pois-list" class="space-y-3">
                  <p class="text-sm text-gray-500">Cargando contenido guardado...</p>
-                 <!-- Lista de POIs con botón de editar se insertará aquí -->
+                 <!-- Lista de POIs con botón de editar y eliminar se insertará aquí -->
              </div>
          </div>
         
@@ -421,7 +441,7 @@
 
 
         // --- Versión de la App ---
-        const APP_VERSION = '1.25'; // Incremented version for map flow fix & popups
+        const APP_VERSION = '1.26'; // Incremented version for save button fix and map delete
 
         // --- Modelos de ECOPIENSA (con imageUrl) ---
         const GITHUB_BASE_URL_MODELS = 'https://raw.githubusercontent.com/instructorandradedcc/7777ar/main/asetss/modelss/';
@@ -483,7 +503,6 @@
         // --- Funciones ---
 
         function showMessage(msg, duration = 3000) {
-            // Asegurarse que messageBox exista (se asigna en DOMContentLoaded)
             if (!messageBox) { 
                 console.warn("Attempted to show message before messageBox was assigned:", msg); 
                 return; 
@@ -494,7 +513,6 @@
         }
 
         function navigateTo(pageName) {
-            // Asegurarse que pages exista
             if (Object.keys(pages).length === 0) { 
                 console.error("Attempted to navigate before pages object was populated."); 
                 return; 
@@ -531,6 +549,7 @@
             } else if (pageName === 'admin') {
                  stopAR();
                  stopMap();
+                 // Refresh selection based on current state when returning to admin
                  initializeModelSelection(); 
             }
         }
@@ -538,6 +557,10 @@
         function stopMap() {
             if (map) {
                  map.off('move', updateCenterCoordsDisplay);
+                 // Remove event listeners from placed POIs list to prevent memory leaks
+                 if (placedPoisList) {
+                    placedPoisList.removeEventListener('click', handleDeletePoiOnMap);
+                 }
                  map.remove(); 
                  map = null;
                  Object.values(poiMarkers).forEach(marker => marker.remove());
@@ -554,7 +577,6 @@
         // --- Firebase Logic ---
         async function initializeFirebase() { 
             console.log("Initializing Firebase with provided config..."); 
-            // Asegurarse que los elementos existan antes de usarlos
             if (loadingPois) loadingPois.textContent = "Inicializando conexión Firebase...";
             if (gotoMapButton) gotoMapButton.disabled = true; 
 
@@ -563,7 +585,7 @@
                  console.error(errorMsg, firebaseConfig);
                  if(loadingPois) loadingPois.textContent = errorMsg;
                  showMessage(errorMsg, 10000); 
-                 return; // Detener inicialización
+                 return; 
             }
             
             try {
@@ -604,7 +626,7 @@
                          if (gotoMapButton) gotoMapButton.disabled = true; 
                          if (listContainer) listContainer.innerHTML = '<p class="text-red-500 font-semibold">Error: Autenticación fallida o cerrada.</p>';
                          allPoisData = []; 
-                         poiDataMap.clear(); // Clear cache on logout
+                         poiDataMap.clear(); 
                          console.error("Firebase User signed out or failed authentication.");
                          showMessage("Error de autenticación con Firebase. No se pueden cargar datos.", 5000);
                      }
@@ -656,7 +678,7 @@
 
 
         function initializeModelSelection() {
-             console.log("Initializing model selection UI..."); 
+             console.log("Initializing model selection UI based on current modelsToPlace:", modelsToPlace); 
              if (!ecopiensaSelectionList || !loadingModelsPlaceholder || !selectVideoCheckbox) {
                   console.error("Required elements for model selection not found.");
                   return; 
@@ -664,10 +686,8 @@
 
             loadingModelsPlaceholder.style.display = 'none'; 
             
-            // Siempre limpiar y repoblar para reflejar 'modelsToPlace' actual
             ecopiensaSelectionList.innerHTML = ''; 
             ECOPIENSA_MODELS.forEach(model => {
-                // Comprobar si está en modelsToPlace (los que *aún* no se han guardado)
                 const isSelected = modelsToPlace.some(m => !m.isCustomVideo && m.url === model.modelUrl); 
                 createCheckbox(model.name, model.modelUrl, isSelected, false, model.imageUrl); 
             });
@@ -675,7 +695,6 @@
             
             selectVideoCheckbox.removeEventListener('change', handleVideoCheckboxChange);
             selectVideoCheckbox.addEventListener('change', handleVideoCheckboxChange);
-            // Comprobar si el video personalizado está en modelsToPlace
             selectVideoCheckbox.checked = modelsToPlace.some(m => m.isCustomVideo);
 
              console.log("Model/Video checkbox UI initialized/updated.");
@@ -762,19 +781,24 @@
              const q = query(poiCollectionRef);
             
              onSnapshot(q, (querySnapshot) => {
-                 console.log("Firestore snapshot received."); // Log para ver si se actualiza
+                 console.log("Firestore snapshot received."); 
                  if (!listContainer || !loadingPois) return; 
                 
                  loadingPois.style.display = 'none'; 
                  allPoisData = []; 
-                 poiDataMap.clear(); // Clear old cache
-                 listContainer.innerHTML = ''; 
+                 poiDataMap.clear(); 
+                 // Clear only if admin page is active, otherwise let map update handle it
+                 if (pages.admin?.classList.contains('active')) {
+                     listContainer.innerHTML = ''; 
+                 }
 
                  if (querySnapshot.empty) {
                      console.log("Query snapshot is empty.");
-                     listContainer.innerHTML = '<p class="text-gray-500">No hay contenido guardado en Firebase.</p>';
-                      if (map && pages.map.classList.contains('active')) {
-                           updateMapMarkersAndPlacedList(); // Update map even if empty
+                      if (pages.admin?.classList.contains('active')) {
+                        listContainer.innerHTML = '<p class="text-gray-500">No hay contenido guardado en Firebase.</p>';
+                     }
+                      if (map && pages.map?.classList.contains('active')) {
+                           updateMapMarkersAndPlacedList(); 
                       }
                      return;
                  }
@@ -782,38 +806,37 @@
                  querySnapshot.forEach((doc) => {
                      const poi = { id: doc.id, ...doc.data() }; 
                      allPoisData.push(poi); 
-                     poiDataMap.set(poi.id, poi); // Cache data by ID
+                     poiDataMap.set(poi.id, poi); 
 
-                     // Populate Admin list (Page 1)
-                     const poiElement = document.createElement('div');
-                     poiElement.className = 'poi-item p-4 border border-gray-200 rounded-lg shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4 items-center';
-                     let typeLabel = poi.poiType === 'video' ? 'Video' : 'Modelo 3D';
-                     let urlToShow = poi.poiType === 'video' ? (poi.videoUrl || 'N/A') : (poi.modelUrl || 'N/A');
-                      if (urlToShow.length > 30) urlToShow = urlToShow.substring(0, 27) + '...'; 
-
-                     poiElement.innerHTML = `
-                         <div>
-                             <strong class="block text-sm text-gray-800">${poi.name || 'Sin Nombre'}</strong>
-                             <span class="block text-xs ${poi.poiType === 'video' ? 'text-purple-600' : 'text-blue-600'}">${typeLabel}</span>
-                             <span class="block text-xs text-gray-500" title="${poi.poiType === 'video' ? poi.videoUrl : poi.modelUrl}">URL: ${urlToShow}</span>
-                         </div>
-                         <div class="text-sm">
-                             <span class="block">Lat: ${poi.lat?.toFixed(6) || 'N/A'}</span>
-                             <span class="block">Lon: ${poi.lon?.toFixed(6) || 'N/A'}</span>
-                         </div>
-                         <div class="text-sm">
-                             <span class="block">Inicia: ${poi.startDate || 'N/A'}</span>
-                             <span class="block">Termina: ${poi.endDate || 'N/A'}</span>
-                         </div>
-                         <div class="text-right">
-                             <button data-id="${poi.id}" class="delete-btn bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-300">
-                                 Eliminar
-                             </button>
-                         </div>
-                     `;
-                     // Solo añadir a la lista si la página admin está activa
+                     // Populate Admin list (Page 1) ONLY if admin page is active
                      if (pages.admin?.classList.contains('active')) {
-                        listContainer.appendChild(poiElement);
+                         const poiElement = document.createElement('div');
+                         poiElement.className = 'poi-item p-4 border border-gray-200 rounded-lg shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4 items-center';
+                         let typeLabel = poi.poiType === 'video' ? 'Video' : 'Modelo 3D';
+                         let urlToShow = poi.poiType === 'video' ? (poi.videoUrl || 'N/A') : (poi.modelUrl || 'N/A');
+                          if (urlToShow.length > 30) urlToShow = urlToShow.substring(0, 27) + '...'; 
+
+                         poiElement.innerHTML = `
+                             <div>
+                                 <strong class="block text-sm text-gray-800">${poi.name || 'Sin Nombre'}</strong>
+                                 <span class="block text-xs ${poi.poiType === 'video' ? 'text-purple-600' : 'text-blue-600'}">${typeLabel}</span>
+                                 <span class="block text-xs text-gray-500" title="${poi.poiType === 'video' ? poi.videoUrl : poi.modelUrl}">URL: ${urlToShow}</span>
+                             </div>
+                             <div class="text-sm">
+                                 <span class="block">Lat: ${poi.lat?.toFixed(6) || 'N/A'}</span>
+                                 <span class="block">Lon: ${poi.lon?.toFixed(6) || 'N/A'}</span>
+                             </div>
+                             <div class="text-sm">
+                                 <span class="block">Inicia: ${poi.startDate || 'N/A'}</span>
+                                 <span class="block">Termina: ${poi.endDate || 'N/A'}</span>
+                             </div>
+                             <div class="text-right">
+                                 <button data-id="${poi.id}" class="delete-btn bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-300">
+                                     Eliminar
+                                 </button>
+                             </div>
+                         `;
+                         listContainer.appendChild(poiElement);
                      }
                  });
                  
@@ -890,6 +913,14 @@
                  placePoiTypeSelect.addEventListener('change', handlePoiTypeChange);
                  handlePoiTypeChange(); 
               }
+             
+             // Add listener for delete buttons on the map page's placed list
+             if (placedPoisList) {
+                placedPoisList.removeEventListener('click', handleDeletePoiOnMap); // Remove previous listener if map re-initializes
+                placedPoisList.addEventListener('click', handleDeletePoiOnMap);
+                console.log("Delete listener attached to placed POIs list on map.");
+             }
+
 
              setTimeout(() => { if (map) map.invalidateSize(); }, 200); 
              console.log("Map initialization complete.");
@@ -919,35 +950,29 @@
              }
              console.log("Updating map markers and placed POIs list...");
             
-             // 1. Clear existing markers
              Object.values(poiMarkers).forEach(marker => {
                   if (map.hasLayer(marker)) map.removeLayer(marker);
              });
              poiMarkers = {}; 
-             // 2. Clear right panel list
              placedPoisList.innerHTML = ''; 
             
              let hasPois = false;
-             // 3. Iterate over current POI data cache
              allPoisData.forEach(poi => { 
                  hasPois = true;
-                 // 3a. Add marker to map
                  if (typeof poi.lat === 'number' && typeof poi.lon === 'number') {
                       let iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png'; 
                       if (poi.poiType === 'video') {
                          iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png'; 
                       }
                       
-                      // Find associated image URL
                       let popupImageUrl = '';
                       if (poi.poiType === 'model' && poi.modelUrl) {
                           const ecoModel = ECOPIENSA_MODELS.find(m => m.modelUrl === poi.modelUrl);
                           if (ecoModel) popupImageUrl = ecoModel.imageUrl;
                       } else if (poi.poiType === 'video') {
-                          popupImageUrl = CUSTOM_VIDEO_PLACEHOLDER.imageUrl; // Use placeholder image for video
+                          popupImageUrl = CUSTOM_VIDEO_PLACEHOLDER.imageUrl; 
                       }
 
-                      // Create popup content with image
                       let popupContent = `<b>${poi.name || 'No Name'}</b> (${poi.poiType || 'model'})`;
                       if (popupImageUrl) {
                           popupContent += `<br><img src="${popupImageUrl}" alt="Preview" class="popup-image" onerror="this.style.display='none'">`;
@@ -961,21 +986,27 @@
                           })
                      })
                          .addTo(map)
-                         .bindPopup(popupContent); // Use content with image
+                         .bindPopup(popupContent); 
                      poiMarkers[poi.id] = marker; 
                  } else { console.warn("POI for map missing coordinates:", poi.id); }
                 
-                 // 3b. Add item to right panel list
+                 // Add item to right panel list with Edit and Delete buttons
                  const listItem = document.createElement('div');
                  listItem.className = 'placed-poi-item p-2 border-b flex justify-between items-center';
                  listItem.innerHTML = `
                      <span class="text-sm font-medium">${poi.name || 'No Name'}</span>
-                     <button data-id="${poi.id}" class="edit-location-btn bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded">
-                         Edit Loc.
-                     </button>
+                     <div>
+                         <button data-id="${poi.id}" class="edit-location-btn bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded">
+                             Edit Loc.
+                         </button>
+                         <button data-id="${poi.id}" class="delete-btn-map"> <!-- Use specific class -->
+                             Del
+                         </button>
+                     </div>
                  `;
                  const editBtn = listItem.querySelector('.edit-location-btn');
-                 editBtn.removeEventListener('click', handleEditLocationClick);
+                 // Delete button listener is handled by the parent placedPoisList listener
+                 editBtn.removeEventListener('click', handleEditLocationClick); // Prevent duplicates if re-rendering
                  editBtn.addEventListener('click', handleEditLocationClick);
                  placedPoisList.appendChild(listItem);
              });
@@ -1010,8 +1041,8 @@
 
         function startEditLocation(poiId) {
              if (isPlacingModel) cancelPlacement(); 
-             if (!allPoisData || allPoisData.length === 0) { showMessage("POI data not loaded yet.", 3000); return; }
-             const poiData = allPoisData.find(p => p.id === poiId);
+             // Use poiDataMap for faster lookup
+             const poiData = poiDataMap.get(poiId); 
              const marker = poiMarkers[poiId];
              if (!poiData || !marker) { showMessage("Error: Could not find POI data or marker.", 4000); return; }
              if (!map) { showMessage("Map is not initialized.", 3000); return; }
@@ -1021,9 +1052,9 @@
              currentEditingMarker = marker; 
 
              if (editingPoiNameEl) editingPoiNameEl.textContent = `Moviendo: ${poiData.name || 'No Name'}`;
-             if (placementPanel) placementPanel.classList.add('hidden'); // Hide placement panel
-             if (placedPoisPanel) placedPoisPanel.classList.add('hidden'); // Hide placed list panel
-             if (editLocationPanel) editLocationPanel.classList.remove('hidden'); // Show edit panel
+             if (placementPanel) placementPanel.classList.add('hidden'); 
+             if (placedPoisPanel) placedPoisPanel.classList.add('hidden'); 
+             if (editLocationPanel) editLocationPanel.classList.remove('hidden'); 
 
              map.setView(marker.getLatLng(), 19); 
              showMessage("Modo Edición: Mueve el mapa y guarda la nueva ubicación.", 4000);
@@ -1033,9 +1064,9 @@
              isEditingLocation = false;
              currentEditingPoiId = null;
              currentEditingMarker = null;
-             if (placementPanel) placementPanel.classList.remove('hidden'); // Show placement panel
-             if (placedPoisPanel) placedPoisPanel.classList.remove('hidden'); // Show placed list panel
-             if (editLocationPanel) editLocationPanel.classList.add('hidden'); // Hide edit panel
+             if (placementPanel) placementPanel.classList.remove('hidden'); 
+             if (placedPoisPanel) placedPoisPanel.classList.remove('hidden'); 
+             if (editLocationPanel) editLocationPanel.classList.add('hidden'); 
         }
         
         async function handleSaveEditLocation() {
@@ -1051,7 +1082,6 @@
                  await updateDoc(docRef, { lat: newLatLng.lat, lon: newLatLng.lng });
                  showMessage('Ubicación actualizada!', 3000);
                  cancelEditLocation(); 
-                 // onSnapshot will update the marker position eventually
              } catch (error) {
                  console.error("Error updating location:", error);
                  showMessage("Error guardando nueva ubicación.", 5000);
@@ -1076,7 +1106,6 @@
          }
 
         function populatePlacementPanel() {
-             // This function now relies on onSnapshot updating allPoisData correctly
              if (!firebaseReady || !poiCollectionRef || !modelsToPlaceList) { 
                  console.warn("Cannot populate placement panel: Firebase not ready or DOM elements missing.");
                  if (modelsToPlaceList) modelsToPlaceList.innerHTML = '<p class="text-sm text-gray-500">Esperando conexión a base de datos...</p>';
@@ -1086,20 +1115,18 @@
              console.log("Populating placement panel. Current modelsToPlace:", modelsToPlace);
              console.log("Current allPoisData used for filtering:", allPoisData);
 
-             modelsToPlaceList.innerHTML = ''; // Clear previous buttons
+             modelsToPlaceList.innerHTML = ''; 
              
-             // Determine which content URLs/types are already placed using allPoisData
              const placedContentIdentifiers = new Set(); 
              allPoisData.forEach(poi => {
-                 if (poi.poiType === 'video' && poi.videoUrl) { // Check if a video POI exists (any URL)
-                      placedContentIdentifiers.add(CUSTOM_VIDEO_PLACEHOLDER.url); // Mark the *concept* of custom video as placed
+                 if (poi.poiType === 'video' && poi.videoUrl) { 
+                      placedContentIdentifiers.add(CUSTOM_VIDEO_PLACEHOLDER.url); 
                  } else if (poi.modelUrl) {
-                      placedContentIdentifiers.add(poi.modelUrl); // Mark specific model URL as placed
+                      placedContentIdentifiers.add(poi.modelUrl); 
                  }
              });
              console.log("Placed content identifiers:", placedContentIdentifiers);
 
-             // Filter the originally selected models (modelsToPlace) to find those not yet placed
              const unplacedContent = modelsToPlace.filter(item => !placedContentIdentifiers.has(item.url));
              console.log("Unplaced content:", unplacedContent);
 
@@ -1108,14 +1135,12 @@
                  return; 
              }
 
-             // Create buttons only for unplaced content
              unplacedContent.forEach((item) => {
                  const button = document.createElement('button'); 
                  button.className = 'place-btn control-button bg-blue-500 hover:bg-blue-600 w-full text-left'; 
                  button.textContent = `Posicionar ${item.name}`; 
                  button.dataset.name = item.name; 
                  button.dataset.url = item.url; 
-                 // No need for index, we'll use URL/name to find data
                  button.dataset.imageUrl = item.imageUrl || ''; 
                  if (item.isCustomVideo) { button.dataset.isCustomVideo = "true"; }
                 
@@ -1128,24 +1153,21 @@
         }
         
         function handlePlaceButtonClick(e) { 
-            // Find the item data from the original modelsToPlace array based on the button's data
             const targetUrl = e.target.dataset.url;
             const itemDataFromState = modelsToPlace.find(m => m.url === targetUrl);
             if (itemDataFromState) {
-                startPlacement(itemDataFromState); // Pass the full object
+                startPlacement(itemDataFromState); 
             } else {
                 console.error("Could not find item data in modelsToPlace for URL:", targetUrl);
                 showMessage("Error interno al iniciar la colocación.", 4000);
             }
         }
 
-        function startPlacement(itemData) { // Expects the full item object from modelsToPlace
+        function startPlacement(itemData) { 
              console.log("Starting placement for:", itemData); 
-             // No need for index anymore
              const isCustomVideo = itemData.isCustomVideo === true;
 
             isPlacingModel = true;
-            // Store the actual object from modelsToPlace
             currentPlacingModel = { ...itemData }; 
 
              if (placingModelName) placingModelName.textContent = `Posicionando: ${currentPlacingModel.name}`;
@@ -1171,11 +1193,9 @@
                  handlePoiTypeChange(); 
              }
              if (placeNameInput) placeNameInput.value = currentPlacingModel.name; 
-             // Set URLs based on type
              if (placeModelUrlInput) placeModelUrlInput.value = isCustomVideo ? '' : currentPlacingModel.url;
-             if (placeVideoUrlInput) placeVideoUrlInput.value = isCustomVideo ? '' : ''; // Clear video URL initially
+             if (placeVideoUrlInput) placeVideoUrlInput.value = isCustomVideo ? '' : ''; 
              
-             // Reset common fields
              const soundUrlInput = document.getElementById('place-sound-url');
              if (soundUrlInput) soundUrlInput.value = '';
              const scaleInput = document.getElementById('place-scale');
@@ -1190,7 +1210,6 @@
              const endDateInput = document.getElementById('place-end-date');
              if (endDateInput) endDateInput.value = nextMonth;
 
-             // Show form, hide list
              if (modelsToPlaceList) modelsToPlaceList.classList.add('hidden'); 
              if (placementFormContainer) placementFormContainer.classList.remove('hidden'); 
             
@@ -1205,17 +1224,28 @@
              if (modelsToPlaceList) modelsToPlaceList.classList.remove('hidden'); // Show list
              if (placementPreviewImageEl) placementPreviewImageEl.style.display = 'none'; 
              
-             // Explicitly call populatePlacementPanel to ensure the list is correct
-             // Needs a small delay to ensure DOM updates have happened
+             // Reset save button state here explicitly
+             if (savePlacementBtn) {
+                 savePlacementBtn.disabled = false;
+                 savePlacementBtn.textContent = 'Guardar Ubicación (en la Cruz)';
+             }
+
+             // Refresh the list of available models
+             // Needs a small delay to allow DOM updates
              setTimeout(populatePlacementPanel, 50); 
              
-             console.log("Placement cancelled.");
+             console.log("Placement cancelled and UI reset.");
         }
         
 
         async function handleSavePlacement() { 
              if (!isPlacingModel || !map || !poiCollectionRef || !savePlacementBtn || !currentPlacingModel.url) { 
                  console.error("Save placement called in invalid state:", {isPlacingModel, map, poiCollectionRef, savePlacementBtn, currentPlacingModel});
+                 // Ensure button is reset even if save fails early
+                 if (savePlacementBtn) {
+                     savePlacementBtn.disabled = false;
+                     savePlacementBtn.textContent = 'Guardar Ubicación (en la Cruz)';
+                 }
                  return; 
              }
 
@@ -1224,8 +1254,9 @@
              savePlacementBtn.disabled = true; 
              savePlacementBtn.textContent = 'Guardando...'; 
 
+             // Define newPoi object outside the try block to use in finally
+             let newPoi = null; 
              try {
-                 // Removed index dependency, use currentPlacingModel directly
                  const poiType = placePoiTypeSelect.value;
                  let modelUrl = '';
                  let videoUrl = '';
@@ -1234,7 +1265,6 @@
                  if (!name) throw new Error("El nombre descriptivo es obligatorio.");
 
                  if (poiType === 'video') { 
-                     // Ensure it's the custom video placeholder being placed
                      if (!currentPlacingModel.isCustomVideo) {
                          throw new Error("Error interno: Intentando guardar video sin seleccionar placeholder.");
                      }
@@ -1243,18 +1273,18 @@
                      if (!videoUrl.startsWith('http') || !videoUrl.toLowerCase().endsWith('.mp4')) {
                          console.warn("El formato de la URL del video podría ser inválido:", videoUrl);
                      }
-                      modelUrl = ''; // Ensure model URL is empty for video POIs
+                      modelUrl = ''; 
                  } else { 
-                     // Ensure it's a model being placed
                      if (currentPlacingModel.isCustomVideo) {
                           throw new Error("Error interno: Intentando guardar modelo usando placeholder de video.");
                      }
-                     modelUrl = currentPlacingModel.url; // Use the URL from the selected model
+                     modelUrl = currentPlacingModel.url; 
                      if (!modelUrl) throw new Error("La URL del modelo es obligatoria para el tipo Modelo 3D.");
-                      videoUrl = ''; // Ensure video URL is empty for model POIs
+                      videoUrl = ''; 
                  }
 
-                const newPoi = { 
+                // Assign to the outer scope variable
+                newPoi = { 
                      name: name, 
                      poiType: poiType, 
                      modelUrl: modelUrl, 
@@ -1268,7 +1298,7 @@
                      endDate: document.getElementById('place-end-date')?.value || "" 
                  };
 
-                 // Validations... (same as before)
+                 // Validations... 
                  if (isNaN(newPoi.scale) || isNaN(newPoi.groundHeight)) throw new Error("La Escala y Altura deben ser números válidos.");
                  if (newPoi.scale <= 0) throw new Error("La Escala debe ser positiva.");
                  if (!newPoi.startDate || !newPoi.endDate) throw new Error("Las fechas de Inicio y Fin son obligatorias.");
@@ -1285,7 +1315,6 @@
                  showMessage(`'${newPoi.name}' guardado exitosamente!`, 3000); 
 
                  // --- Remove from 'modelsToPlace' state ---
-                 // Find and remove the item that was just placed from the state array
                  const placedUrl = currentPlacingModel.url;
                  modelsToPlace = modelsToPlace.filter(item => item.url !== placedUrl);
                  console.log("Removed from modelsToPlace state. Remaining:", modelsToPlace);
@@ -1298,21 +1327,74 @@
                   if (checkbox) checkbox.checked = false;
                  
                  // Reset placement state and show the updated list
-                 cancelPlacement(); // This now calls populatePlacementPanel after a delay
+                 // cancelPlacement handles the UI reset and button re-enabling now
+                 cancelPlacement(); 
 
              } catch (error) { 
                  console.error("Error saving POI: ", error);
                  showMessage("Error al guardar: " + error.message, 5000);
-             } finally { 
-                 // Ensure button is re-enabled even if there was an error before cancelPlacement
+                 // Explicitly re-enable button on error if save failed before cancelPlacement
                  if (savePlacementBtn) { 
-                    savePlacementBtn.disabled = false; 
-                    savePlacementBtn.textContent = 'Guardar Ubicación (en la Cruz)'; 
+                     savePlacementBtn.disabled = false; 
+                     savePlacementBtn.textContent = 'Guardar Ubicación (en la Cruz)'; 
+                 }
+             } 
+             // No 'finally' block needed here as cancelPlacement handles the reset
+         }
+
+        // --- Delete POI from Map Page ---
+        async function handleDeletePoiOnMap(e) {
+             if (e.target && e.target.classList.contains('delete-btn-map')) { 
+                 const docId = e.target.getAttribute('data-id');
+                 const button = e.target; 
+                 if (!docId || button.disabled) return;
+
+                 // Double-click confirmation logic
+                 if (!button.classList.contains('confirm')) {
+                     button.textContent = 'Sure?';
+                     button.classList.add('confirm');
+                     // Reset after a delay
+                     setTimeout(() => {
+                         const currentButton = placedPoisList?.querySelector(`.delete-btn-map[data-id="${docId}"]`);
+                         if (currentButton && currentButton.classList.contains('confirm')) { 
+                             currentButton.textContent = 'Del';
+                             currentButton.classList.remove('confirm');
+                         }
+                     }, 3000);
+                     return; // Wait for second click
+                 }
+
+                 // Second click (confirmation)
+                 if (!firebaseReady || !poiCollectionRef) { 
+                     showMessage("Error: La base de datos no está lista para eliminar.", 4000);
+                     button.textContent = 'Del'; // Reset button appearance
+                     button.classList.remove('confirm');
+                     return; 
+                 }
+                 
+                 try {
+                     button.disabled = true;
+                     button.textContent = '...'; // Deleting indicator
+                     const docRef = doc(db, poiCollectionRef.path, docId);
+                     await deleteDoc(docRef);
+                     showMessage('Punto de interés eliminado.', 3000);
+                     // UI will update via onSnapshot, no need to manually remove button
+                 } catch (error) {
+                     console.error("Error deleting document from map page: ", error);
+                     showMessage("No se pudo eliminar el documento.", 5000);
+                     // Attempt to restore button state visually if it still exists
+                     const currentButton = placedPoisList?.querySelector(`.delete-btn-map[data-id="${docId}"]`);
+                     if (currentButton) { 
+                         currentButton.disabled = false;
+                         currentButton.textContent = 'Del';
+                         currentButton.classList.remove('confirm');
+                     }
                  }
              }
          }
          
          function populateSummaryPage() {
+             // ... (no changes needed here) ...
              console.log("Populating Summary Page..."); 
              if (!firebaseReady || !poiCollectionRef || !summaryPoiList || !loadingSummaryPois) { 
                   console.warn("Cannot populate summary: Firebase not ready or DOM elements missing.");
@@ -1360,6 +1442,7 @@
          }
 
          async function startARFlow() { 
+             // ... (no changes needed here) ...
              console.log("Starting AR Flow..."); 
              if (!pages.ar.classList.contains('active')) return; 
              if (!arLoadingScreen || !loadingStatusText) return;
@@ -1424,6 +1507,7 @@
          }
 
         async function initializeARScene() {
+             // ... (no changes needed here) ...
              console.log("Initializing A-Frame Scene..."); 
              if (!firebaseReady || !poiCollectionRef) { 
                  showMessage("Conexión a base de datos perdida. No se puede iniciar AR.", 5000);
@@ -1555,6 +1639,7 @@
         }
 
         function stopAR() { 
+             // ... (no changes needed here) ...
              console.log("Stopping AR..."); 
              if (gpsWatchId) { navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; }
              if (arScene) {
@@ -1576,6 +1661,7 @@
 
 
         function onGPSUpdate(event) { 
+             // ... (no changes needed here) ...
              const gpsStatusEl = document.getElementById('gps-status');
              const gpsAccuracyEl = document.getElementById('gps-accuracy');
              if (!pages.ar?.classList.contains('active') || !gpsStatusEl || !gpsAccuracyEl) return;
@@ -1586,6 +1672,7 @@
              gpsAccuracyEl.style.color = pos.accuracy < 10 ? '#4CAF50' : (pos.accuracy < 25 ? '#FFC107' : '#F44336'); 
         }
         function onGPSError(event) { 
+             // ... (no changes needed here) ...
               if (!pages.ar?.classList.contains('active')) return;
              const gpsStatusEl = document.getElementById('gps-status');
              if (gpsStatusEl) gpsStatusEl.textContent = 'Error';
@@ -1601,6 +1688,7 @@
              showMessage('AR GPS Error: ' + errorMsg, 5000);
         }
         function startGPSWatch() { 
+             // ... (no changes needed here) ...
              window.removeEventListener('gps-camera-update-position', onGPSUpdate);
              window.removeEventListener('gps-camera-error', onGPSError);
             
@@ -1610,6 +1698,7 @@
         }
 
          function setupNavigationListeners() {
+             // ... (no changes needed here) ...
              console.log("Setting up navigation listeners..."); 
              const setupListener = (id, event, handler) => { 
                  const element = document.getElementById(id);
@@ -1702,10 +1791,11 @@
              if (savePlacementBtn) savePlacementBtn.addEventListener('click', handleSavePlacement);
              if (saveEditLocationBtn) saveEditLocationBtn.addEventListener('click', handleSaveEditLocation);
              if (cancelEditLocationBtn) cancelEditLocationBtn.addEventListener('click', cancelEditLocation);
+             // Listener for delete buttons on ADMIN page
              if (listContainer) {
                  listContainer.addEventListener('click', async (e) => {
                      if (e.target && e.target.classList.contains('delete-btn')) { 
-                         // ... (lógica de eliminación con doble clic como antes) ...
+                         // Logic for ADMIN page delete (remains the same)
                          const docId = e.target.getAttribute('data-id');
                          const button = e.target; 
                          if (button.disabled) return;
@@ -1715,8 +1805,7 @@
                              button.classList.remove('bg-red-500', 'hover:bg-red-600');
                              button.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
                              setTimeout(() => {
-                                 // Check if button still exists and hasn't been removed by a snapshot update
-                                 const currentButton = listContainer.querySelector(`.delete-btn[data-id="${docId}"]`);
+                                 const currentButton = listContainer?.querySelector(`.delete-btn[data-id="${docId}"]`);
                                  if (currentButton && currentButton.textContent.includes('Clic otra vez')) { 
                                      currentButton.textContent = 'Eliminar';
                                      currentButton.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
@@ -1726,10 +1815,9 @@
                              return; 
                          }
 
-                         // Second click logic (confirmation)
+                         // Second click
                          if (!firebaseReady || !poiCollectionRef) { 
                              showMessage("Error: La base de datos no está lista para eliminar.", 4000);
-                             // Attempt to restore button state visually
                              button.textContent = 'Eliminar';
                              button.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
                              button.classList.add('bg-red-500', 'hover:bg-red-600');
@@ -1745,8 +1833,7 @@
                          } catch (error) {
                              console.error("Error al eliminar documento: ", error);
                              showMessage("No se pudo eliminar el documento.", 5000);
-                             // Attempt to restore button state visually if it still exists
-                              const currentButton = listContainer.querySelector(`.delete-btn[data-id="${docId}"]`);
+                              const currentButton = listContainer?.querySelector(`.delete-btn[data-id="${docId}"]`);
                               if (currentButton) { 
                                  currentButton.disabled = false;
                                  currentButton.textContent = 'Eliminar';
@@ -1766,6 +1853,4 @@
     </script>
 </body>
 </html>
-
-
 
