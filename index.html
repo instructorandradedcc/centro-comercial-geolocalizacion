@@ -51,10 +51,25 @@
         
         /* Estilos de Mapa y AR (adaptados) */
         #map-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        #map-canvas { width: 100%; height: 100%; z-index: 1; }
+        #map-canvas { width: 100%; height: 100%; z-index: 1; cursor: grab; }
         #map-controls { position: fixed; top: 20px; right: 20px; z-index: 402; display: flex; flex-direction: column; gap: 10px; }
-        #coords-jumpto { position: fixed; top: 20px; left: 20px; z-index: 402; background-color: rgba(255, 255, 255, 0.9); padding: 10px; border-radius: 8px; display: flex; gap: 5px; align-items: center; }
         
+        /* RE-AGREGADO: Crosshair del archivo original */
+        #map-crosshair {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px; height: 30px; border: 2px solid white;
+            border-radius: 50%; box-shadow: 0 0 10px black;
+            pointer-events: none; z-index: 402;
+        }
+        
+        /* RE-AGREGADO: Coords-jumpto del archivo original */
+        #coords-jumpto {
+            position: fixed; top: 20px; left: 20px; z-index: 402;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 10px; border-radius: 8px; display: flex; gap: 5px; align-items: center;
+        }
+
         a-scene { position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; z-index: 1 !important; }
         .arjs-loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); color: white; display: none; flex-direction: column; justify-content: center; align-items: center; font-size: 1.5rem; z-index: 10000; text-align: center; }
         .permission-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); display: none; justify-content: center; align-items: center; z-index: 10001; }
@@ -84,72 +99,32 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-    <!-- PÁGINA 1: Panel de Administración (fusionada desde upload-page) -->
+    <!-- PÁGINA 1: Panel de Administración (Selección de Modelos) -->
     <div id="admin-page" class="page active">
         <div class="container mx-auto p-6 max-w-4xl">
             <div class="flex justify-between items-center mb-8">
-                <h1 class="text-3xl font-bold text-blue-700">Panel de Administración AR</h1>
+                <h1 class="text-3xl font-bold text-blue-700">
+                    Panel de Administración AR
+                    <span id="version-display" class="text-sm align-middle font-normal text-gray-400 ml-2"></span>
+                </h1>
                 <div>
                     <button id="goto-map-btn" class="control-button bg-indigo-500 hover:bg-indigo-600">Ver Mapa</button>
                     <button id="goto-ar-btn" class="control-button bg-green-500 hover:bg-green-600">Probar AR</button>
                 </div>
             </div>
 
-            <!-- Formulario para agregar nuevos Puntos de Interés (POI) -->
+            <!-- Sección de Selección de Modelos -->
             <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-                <h2 class="text-2xl font-semibold mb-4">Agregar Nuevo Punto de Interés</h2>
-                <form id="poi-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="poi-name" class="block text-sm font-medium text-gray-700">Nombre del POI</label>
-                        <input type="text" id="poi-name" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="Ej: Santa en Trineo">
-                    </div>
-                    <div>
-                        <label for="model-quick-select" class="block text-sm font-medium text-gray-700">Selección Rápida (ECOPIENSA)</label>
-                        <select id="model-quick-select" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                            <option value="">-- Opcional: Seleccionar modelo --</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="poi-model-url" class="block text-sm font-medium text-gray-700">URL del Modelo (.glb)</label>
-                        <input type="url" id="poi-model-url" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="https://.../modelo.glb">
-                    </div>
-                    <div>
-                        <label for="poi-sound-url" class="block text-sm font-medium text-gray-700">URL de Sonido (Opcional, .mp3)</label>
-                        <input type="url" id="poi-sound-url" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="https://.../jinglebells.mp3">
-                    </div>
-                    <div>
-                        <label for="poi-lat" class="block text-sm font-medium text-gray-700">Latitud</label>
-                        <input type="number" step="any" id="poi-lat" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="4.0950">
-                    </div>
-                    <div>
-                        <label for="poi-lon" class="block text-sm font-medium text-gray-700">Longitud</label>
-                        <input type="number" step="any" id="poi-lon" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="-76.1950">
-                    </div>
-                    <div>
-                        <label for="poi-scale" class="block text-sm font-medium text-gray-700">Escala (Número)</label>
-                        <input type="number" step="0.1" id="poi-scale" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" value="1.0">
-                    </div>
-                     <div>
-                        <label for="poi-ground-height" class="block text-sm font-medium text-gray-700">Altura sobre terreno (m)</label>
-                        <input type="number" step="0.1" id="poi-ground-height" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" value="0.0">
-                    </div>
-                    <div>
-                        <label for="poi-start-date" class="block text-sm font-medium text-gray-700">Fecha de Inicio (Activación)</label>
-                        <input type="date" id="poi-start-date" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                    </div>
-                    <div>
-                        <label for="poi-end-date" class="block text-sm font-medium text-gray-700">Fecha de Fin (Desactivación)</label>
-                        <input type="date" id="poi-end-date" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                    </div>
-                    <div class="md:col-span-2 text-center">
-                        <button type="submit" id="submit-btn" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300">
-                            Guardar Punto de Interés
-                        </button>
-                    </div>
-                </form>
+                <h2 class="text-2xl font-semibold mb-4">1. Seleccionar Modelos para Colocar</h2>
+                <p class="text-gray-600 mb-4">Marca los modelos de Ecopiensa que quieres posicionar en el mapa.</p>
+                <div id="ecopiensa-selection-list" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <!-- Checkboxes de modelos se insertarán aquí -->
+                </div>
+                <h2 class="text-2xl font-semibold mt-6 mb-4">2. Ir al Mapa para Posicionar</h2>
+                <p class="text-gray-600">Los modelos que selecciones aquí estarán disponibles en el panel del mapa para que les asignes una geolocalización.</p>
             </div>
 
-            <!-- Lista de POIs existentes -->
+            <!-- Lista de POIs existentes (para eliminar) -->
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-2xl font-semibold mb-4">Puntos de Interés Guardados</h2>
                 <div id="poi-list-container" class="space-y-4">
@@ -160,16 +135,69 @@
         </div>
     </div>
     
-    <!-- PÁGINA 2: Vista de Mapa -->
+    <!-- PÁGINA 2: Vista de Mapa (Ahora con panel de colocación) -->
     <div id="map-page" class="page">
         <div id="map-container">
             <div id="map-canvas"></div>
+            <!-- RE-AGREGADO: Crosshair -->
+            <div id="map-crosshair"></div>
         </div>
+
+        <!-- RE-AGREGADO: Coords-jumpto -->
         <div id="coords-jumpto">
             <input type="number" id="jumpto-lat" placeholder="Latitud" class="w-24 p-1 border rounded text-sm">
             <input type="number" id="jumpto-lon" placeholder="Longitud" class="w-24 p-1 border rounded text-sm">
             <button id="jumpto-btn" class="control-button bg-blue-500 hover:bg-blue-600 p-2 text-sm">Ir</button>
         </div>
+
+        <!-- MODIFICADO: Panel de Colocación -->
+        <div id="placement-panel" class="fixed top-20 left-3 z-[402] bg-white p-4 rounded-lg shadow-lg max-w-sm w-11/12 md:w-auto max-h-[70vh] overflow-y-auto">
+            <h3 class="text-lg font-semibold mb-2">Colocar Modelos</h3>
+            <div id="models-to-place-list" class="space-y-2 mb-4">
+                <p class="text-sm text-gray-500">No hay modelos seleccionados. Vuelve al Panel y selecciona algunos.</p>
+                <!-- Botones para colocar modelos se insertarán aquí -->
+            </div>
+            
+            <!-- RE-AGREGADO: Slider de Zoom -->
+            <div class="slider-container mb-4">
+                <label for="map-zoom-slider" class="block text-sm font-medium text-gray-700">Zoom del Mapa</label>
+                <input id="map-zoom-slider" type="range" min="1" max="22" value="15" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+            
+            <!-- MODIFICADO: Formulario de Colocación -->
+            <div id="placement-form-container" class="hidden space-y-2">
+                <h4 id="placing-model-name" class="font-semibold text-blue-600"></h4>
+                
+                <div>
+                    <label for="place-scale" class="block text-sm font-medium text-gray-700">Escala</label>
+                    <input type="number" id="place-scale" class="mt-1 w-full p-2 border border-gray-300 rounded" step="0.1" value="1.0">
+                </div>
+                <div>
+                    <label for="place-ground-height" class="block text-sm font-medium text-gray-700">Altura sobre terreno (m)</label>
+                    <input type="number" id="place-ground-height" class="mt-1 w-full p-2 border border-gray-300 rounded" step="0.1" value="0.0">
+                </div>
+                <div>
+                    <label for="place-sound-url" class="block text-sm font-medium text-gray-700">URL Sonido (Opcional, .mp3)</label>
+                    <input type="url" id="place-sound-url" class="mt-1 w-full p-2 border border-gray-300 rounded" placeholder="https://.../musica.mp3">
+                </div>
+                <div>
+                    <label for="place-start-date" class="block text-sm font-medium text-gray-700">Fecha Inicio</label>
+                    <input type="date" id="place-start-date" class="mt-1 w-full p-2 border border-gray-300 rounded">
+                </div>
+                <div>
+                    <label for="place-end-date" class="block text-sm font-medium text-gray-700">Fecha Fin</label>
+                    <input type="date" id="place-end-date" class="mt-1 w-full p-2 border border-gray-300 rounded">
+                </div>
+                
+                <!-- MODIFICADO: Mensaje y botón de guardado -->
+                <p class="text-sm text-blue-600 font-semibold pt-2">Mueve el mapa para centrar la cruz en la ubicación deseada.</p>
+                <button id="save-placement-btn" class="w-full bg-green-500 hover:bg-green-600 text-white p-2 rounded transition duration-300 font-bold">
+                    Guardar Ubicación (en la Cruz)
+                </button>
+                <button id="cancel-placement-btn" class="w-full bg-gray-500 hover:bg-gray-600 text-white p-2 rounded transition duration-300">Cancelar</button>
+            </div>
+        </div>
+
         <div id="map-controls">
             <button id="back-to-admin-btn" class="control-button bg-gray-500 hover:bg-gray-600">Volver al Panel</button>
             <button id="goto-ar-from-map-btn" class="control-button bg-green-500 hover:bg-green-600">Probar AR</button>
@@ -193,7 +221,7 @@
             <div><strong>Precisión:</strong> <span id="gps-accuracy" style="font-weight: bold;">--</span>m</div>
         </div>
         <div id="ar-controls">
-            <button id="back-to-admin-from-ar-btn" class="control-button bg-gray-500 hover:bg-gray-600">Volver</button>
+            <button id="back-to-admin-from-ar-btn" class="control-button bg-gray-500 hover:bg-gray-600">Volver</GlowButton>
         </div>
     </div>
 
@@ -228,6 +256,9 @@
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 
+        // --- Versión de la App ---
+        const APP_VERSION = '1.02'; // Incrementada por el flujo de crosshair
+
         // --- Modelos de ECOPIENSA ---
         const GITHUB_BASE_URL = 'https://raw.githubusercontent.com/instructorandradedcc/7777ar/main/asetss/modelss/';
         const ECOPIENSA_MODELS = [
@@ -248,6 +279,11 @@
         let map;
         let poiMarkers = []; // Almacenará los marcadores del mapa
 
+        // --- Estado Global para el nuevo flujo ---
+        let modelsToPlace = []; // Array de {name, url} seleccionados en Pag 1
+        let isPlacingModel = false;
+        let currentPlacingModel = {}; // {name, url} del modelo que se está colocando
+
         // Variables para el control de la escena AR
         let arScene = null;
         let gpsWatchId = null;
@@ -263,11 +299,19 @@
         const loadingStatusText = document.getElementById('loading-status-text');
         
         // Elementos del DOM (Panel Admin)
-        const form = document.getElementById('poi-form');
-        const submitBtn = document.getElementById('submit-btn');
         const listContainer = document.getElementById('poi-list-container');
         const loadingPois = document.getElementById('loading-pois');
-        const quickSelect = document.getElementById('model-quick-select');
+        const ecopiensaSelectionList = document.getElementById('ecopiensa-selection-list');
+
+        // Elementos del DOM (Mapa)
+        const placementPanel = document.getElementById('placement-panel');
+        const modelsToPlaceList = document.getElementById('models-to-place-list');
+        const placementFormContainer = document.getElementById('placement-form-container');
+        const placingModelName = document.getElementById('placing-model-name');
+        const cancelPlacementBtn = document.getElementById('cancel-placement-btn');
+        const savePlacementBtn = document.getElementById('save-placement-btn'); // NUEVO
+        const mapZoomSlider = document.getElementById('map-zoom-slider'); // NUEVO
+        const jumptoBtn = document.getElementById('jumpto-btn'); // NUEVO
 
         function showMessage(msg, duration = 3000) {
             messageBox.textContent = msg;
@@ -297,6 +341,12 @@
 
         // --- Lógica de Firebase (Panel Admin) ---
         async function initializeApp() {
+            // Mostrar la versión de la app
+            const versionDisplay = document.getElementById('version-display');
+            if (versionDisplay) {
+                versionDisplay.textContent = `v${APP_VERSION}`;
+            }
+
             try {
                 setLogLevel('Debug');
                 const app = initializeApp(firebaseConfig);
@@ -311,7 +361,7 @@
                         poiCollectionRef = collection(db, collectionPath);
                         console.log('Escuchando en la colección:', collectionPath);
 
-                        populateQuickSelect();
+                        initializeModelSelection(); // Prepara los checkboxes
                         loadAndListenPois(); // Carga la lista de POIs en el panel
                     }
                 });
@@ -328,34 +378,43 @@
             }
         }
 
-        function populateQuickSelect() {
-            if (!quickSelect) return;
+        // Llena la lista de checkboxes en la Página 1
+        function initializeModelSelection() {
+            ecopiensaSelectionList.innerHTML = '';
             ECOPIENSA_MODELS.forEach(model => {
-                const option = document.createElement('option');
-                option.value = model.url;
-                option.textContent = model.name;
-                quickSelect.appendChild(option);
-            });
-
-            quickSelect.addEventListener('change', (e) => {
-                const selectedUrl = e.target.value;
-                if (selectedUrl) {
-                    const selectedName = e.target.options[e.target.selectedIndex].text;
-                    document.getElementById('poi-model-url').value = selectedUrl;
-                    document.getElementById('poi-name').value = selectedName;
-                } else {
-                    document.getElementById('poi-model-url').value = '';
-                    document.getElementById('poi-name').value = '';
-                }
+                const isSelected = modelsToPlace.some(m => m.url === model.url);
+                const label = document.createElement('label');
+                label.className = 'flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer';
+                label.innerHTML = `
+                    <input type="checkbox" class="model-select-cb h-5 w-5 text-blue-600" 
+                           data-name="${model.name}" 
+                           data-url="${model.url}" 
+                           ${isSelected ? 'checked' : ''}>
+                    <span>${model.name}</span>
+                `;
+                
+                label.querySelector('.model-select-cb').addEventListener('change', (e) => {
+                    const modelData = { name: e.target.dataset.name, url: e.target.dataset.url };
+                    if (e.target.checked) {
+                        if (!modelsToPlace.some(m => m.url === modelData.url)) {
+                            modelsToPlace.push(modelData);
+                        }
+                    } else {
+                        modelsToPlace = modelsToPlace.filter(m => m.url !== modelData.url);
+                    }
+                    console.log("Modelos para colocar:", modelsToPlace);
+                });
+                ecopiensaSelectionList.appendChild(label);
             });
         }
 
+        // Carga la lista de POIs eliminables en la Página 1
         function loadAndListenPois() {
             const q = query(poiCollectionRef);
             
             onSnapshot(q, (querySnapshot) => {
                 if (querySnapshot.empty) {
-                    listContainer.innerHTML = '<p class="text-gray-500">No hay puntos de interés guardados. ¡Agrega uno!</p>';
+                    listContainer.innerHTML = '<p class="text-gray-500">No hay puntos de interés guardados.</p>';
                     return;
                 }
 
@@ -372,8 +431,8 @@
                             <span class="text-xs text-gray-500">ID: ${poiId.substring(0, 6)}...</span>
                         </div>
                         <div class="text-sm">
-                            <span class="block">Lat: ${poi.lat}</span>
-                            <span class="block">Lon: ${poi.lon}</span>
+                            <span class="block">Lat: ${poi.lat.toFixed(6)}</span>
+                            <span class="block">Lon: ${poi.lon.toFixed(6)}</span>
                         </div>
                         <div class="text-sm">
                             <span class="block">Inicia: ${poi.startDate}</span>
@@ -394,55 +453,11 @@
             });
         }
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (!poiCollectionRef) {
-                showMessage("La base de datos no está lista. Intenta de nuevo.", 5000);
-                return;
-            }
-
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Guardando...';
-
-            try {
-                const newPoi = {
-                    name: document.getElementById('poi-name').value,
-                    modelUrl: document.getElementById('poi-model-url').value,
-                    soundUrl: document.getElementById('poi-sound-url').value || "",
-                    lat: parseFloat(document.getElementById('poi-lat').value),
-                    lon: parseFloat(document.getElementById('poi-lon').value),
-                    scale: parseFloat(document.getElementById('poi-scale').value),
-                    groundHeight: parseFloat(document.getElementById('poi-ground-height').value),
-                    startDate: document.getElementById('poi-start-date').value,
-                    endDate: document.getElementById('poi-end-date').value
-                };
-
-                // Validar datos
-                if (isNaN(newPoi.lat) || isNaN(newPoi.lon) || isNaN(newPoi.scale) || isNaN(newPoi.groundHeight)) {
-                    throw new Error("Latitud, Longitud, Escala y Altura deben ser números válidos.");
-                }
-                if (!newPoi.startDate || !newPoi.endDate) {
-                    throw new Error("Las fechas de inicio y fin son obligatorias.");
-                }
-
-                await addDoc(poiCollectionRef, newPoi);
-                showMessage('¡Punto de interés guardado!', 3000);
-                form.reset(); 
-
-            } catch (error) {
-                console.error("Error al agregar documento: ", error);
-                showMessage("Error al guardar: " + error.message, 5000);
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Guardar Punto de Interés';
-            }
-        });
-
+        // Listener para eliminar POIs (sigue en Página 1)
         listContainer.addEventListener('click', async (e) => {
             if (e.target && e.target.classList.contains('delete-btn')) {
                 const docId = e.target.getAttribute('data-id');
                 
-                // Usar un modal personalizado en lugar de confirm()
                 if (confirm("¿Estás seguro de que quieres eliminar este punto de interés?")) {
                     try {
                         e.target.disabled = true;
@@ -460,7 +475,8 @@
             }
         });
         
-        // --- Lógica del Mapa ---
+        // --- Lógica del Mapa (Página 2) ---
+        
         function initMap() {
             if (!poiCollectionRef) {
                 showMessage("La base de datos no está lista.", 3000);
@@ -473,29 +489,22 @@
             }
 
             const mapContainer = document.getElementById('map-canvas');
-            // Centrar el mapa en Tuluá por defecto
-            const defaultCenter = [4.0835, -76.1915];
+            const defaultCenter = [4.0835, -76.1915]; // Tuluá
             map = L.map(mapContainer, {
-                zoomControl: true, // Habilitar zoom por defecto
+                zoomControl: false, // Deshabilitamos el zoom por defecto
                 preferCanvas: true
             }).setView(defaultCenter, 15);
 
             L.tileLayer('https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
-                maxZoom: 20,
+                maxZoom: 22, // Aumentado para más detalle
                 subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
                 attribution: 'Imagery &copy;2025 Google, Map data &copy;2025 Google'
             }).addTo(map);
 
-            // Escuchar los POIs de Firebase y agregarlos al mapa
+            // Cargar marcadores de POIs existentes
             onSnapshot(query(poiCollectionRef), (querySnapshot) => {
-                // Limpiar marcadores antiguos
                 poiMarkers.forEach(marker => map.removeLayer(marker));
                 poiMarkers = [];
-
-                if (querySnapshot.empty) {
-                    showMessage("No hay POIs para mostrar en el mapa.", 2000);
-                    return;
-                }
                 
                 querySnapshot.forEach((doc) => {
                     const poi = doc.data();
@@ -504,32 +513,158 @@
                         .bindPopup(`<b>${poi.name}</b><br>Escala: ${poi.scale}<br>Activo: ${poi.startDate} a ${poi.endDate}`);
                     poiMarkers.push(marker);
                 });
-
-                // Centrar el mapa en los marcadores si existen
-                if (poiMarkers.length > 0) {
-                    const group = new L.featureGroup(poiMarkers);
-                    map.fitBounds(group.getBounds().pad(0.1));
-                }
             });
 
-            // Invalidar el tamaño del mapa después de un corto tiempo
+            // Llenar el panel de colocación
+            populatePlacementPanel();
+
+            // Resetear el estado de colocación
+            cancelPlacement();
+
+            // Sincronizar el slider con el zoom del mapa
+            mapZoomSlider.value = map.getZoom();
+            mapZoomSlider.addEventListener('input', (e) => {
+                if (map) map.setZoom(parseFloat(e.target.value));
+            });
+            map.on('zoomend', () => {
+                mapZoomSlider.value = map.getZoom();
+            });
+            
+            // Conectar el botón "Ir"
+            jumptoBtn.addEventListener('click', jumpToCoords);
+
             setTimeout(() => map.invalidateSize(), 200);
         }
         
+        // RE-AGREGADO: Función para saltar a coords
         function jumpToCoords() {
             const lat = parseFloat(document.getElementById('jumpto-lat').value);
             const lon = parseFloat(document.getElementById('jumpto-lon').value);
             if (isNaN(lat) || isNaN(lon) || !map) return;
-            map.setView([lat, lon], 18);
+            map.setView([lat, lon], 18); // Fija el zoom a 18 al saltar
         }
 
-        // --- Lógica de AR ---
+        // Llena el panel de la izquierda en el mapa
+        function populatePlacementPanel() {
+            modelsToPlaceList.innerHTML = '';
+            // Filtra los modelos que ya están en Firebase (comparando URL)
+            getDocs(query(poiCollectionRef)).then(querySnapshot => {
+                const placedUrls = new Set();
+                querySnapshot.forEach(doc => {
+                    placedUrls.add(doc.data().modelUrl);
+                });
+
+                const unplacedModels = modelsToPlace.filter(model => !placedUrls.has(model.url));
+
+                if (unplacedModels.length === 0) {
+                    modelsToPlaceList.innerHTML = '<p class="text-sm text-gray-500">Todos los modelos seleccionados ya están en el mapa. Vuelve al Panel para añadir más o eliminar existentes.</p>';
+                    return;
+                }
+
+                unplacedModels.forEach((model, index) => {
+                    const button = document.createElement('button');
+                    button.className = 'place-btn control-button bg-blue-500 hover:bg-blue-600 w-full text-left';
+                    button.textContent = `Colocar ${model.name}`;
+                    button.dataset.name = model.name;
+                    button.dataset.url = model.url;
+                    button.dataset.index = modelsToPlace.findIndex(m => m.url === model.url); // Índice original
+                    
+                    button.addEventListener('click', (e) => {
+                        startPlacement(e.target.dataset);
+                    });
+                    modelsToPlaceList.appendChild(button);
+                });
+            });
+        }
+
+        // Inicia el modo de colocación
+        function startPlacement(modelData) {
+            isPlacingModel = true;
+            currentPlacingModel = { name: modelData.name, url: modelData.url, index: parseInt(modelData.index) };
+
+            // Poblar y mostrar el formulario
+            placingModelName.textContent = `Colocando: ${modelData.name}`;
+            document.getElementById('place-sound-url').value = '';
+            document.getElementById('place-scale').value = '1.0';
+            document.getElementById('place-ground-height').value = '0.0';
+            
+            const today = new Date().toISOString().split('T')[0];
+            const nextMonth = new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0];
+            document.getElementById('place-start-date').value = today;
+            document.getElementById('place-end-date').value = nextMonth;
+
+            modelsToPlaceList.classList.add('hidden');
+            placementFormContainer.classList.remove('hidden');
+            
+            showMessage(`Mueve el mapa y presiona 'Guardar Ubicación'`);
+            // Ya no se necesita el listener de clic en el mapa
+        }
+
+        // Cancela el modo de colocación
+        function cancelPlacement() {
+            isPlacingModel = false;
+            currentPlacingModel = {};
+            modelsToPlaceList.classList.remove('hidden');
+            placementFormContainer.classList.add('hidden');
+            // No hay listener de clic que quitar
+        }
+        cancelPlacementBtn.addEventListener('click', cancelPlacement);
+
+
+        // MODIFICADO: Manejador del botón de guardar
+        savePlacementBtn.addEventListener('click', async () => {
+            if (!isPlacingModel || !map) return;
+
+            const latlng = map.getCenter(); // Obtiene coords del crosshair
+            showMessage('Guardando...', 2000);
+            savePlacementBtn.disabled = true;
+
+            try {
+                const newPoi = {
+                    name: currentPlacingModel.name,
+                    modelUrl: currentPlacingModel.url,
+                    soundUrl: document.getElementById('place-sound-url').value || "",
+                    lat: latlng.lat,
+                    lon: latlng.lng,
+                    scale: parseFloat(document.getElementById('place-scale').value),
+                    groundHeight: parseFloat(document.getElementById('place-ground-height').value),
+                    startDate: document.getElementById('place-start-date').value,
+                    endDate: document.getElementById('place-end-date').value
+                };
+
+                if (isNaN(newPoi.scale) || isNaN(newPoi.groundHeight)) throw new Error("Escala y Altura deben ser números.");
+                if (!newPoi.startDate || !newPoi.endDate) throw new Error("Las fechas son obligatorias.");
+
+                await addDoc(poiCollectionRef, newPoi);
+                
+                showMessage(`¡${newPoi.name} guardado en ${newPoi.lat.toFixed(6)}, ${newPoi.lon.toFixed(6)}!`, 3000);
+
+                // Quitar el modelo del array global 'modelsToPlace'
+                modelsToPlace.splice(currentPlacingModel.index, 1);
+                // Actualizar los checkboxes en la Pag 1 para que se desmarque
+                const checkbox = document.querySelector(`.model-select-cb[data-url="${currentPlacingModel.url}"]`);
+                if(checkbox) checkbox.checked = false;
+                
+                // Actualizar la UI del panel
+                populatePlacementPanel(); 
+                cancelPlacement(); 
+
+            } catch (error) {
+                console.error("Error al guardar POI: ", error);
+                showMessage("Error al guardar: " + error.message, 5000);
+            } finally {
+                savePlacementBtn.disabled = false;
+            }
+        });
+
+        // --- Lógica de AR (Página 3) ---
+        // (Sin cambios, funciona igual)
+        
         async function startARFlow() {
             arLoadingScreen.classList.add('active');
             loadingStatusText.textContent = 'Solicitando permisos...';
             
             try {
-                // Solicitar permisos de cámara y GPS
                 await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                 await new Promise((resolve, reject) => {
                     navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
@@ -558,7 +693,7 @@
             }
 
             const arSceneContainer = document.getElementById('ar-scene-container');
-            arSceneContainer.innerHTML = ''; // Limpiar
+            arSceneContainer.innerHTML = ''; 
             
             arScene = document.createElement('a-scene');
             arScene.id = 'ar-scene';
@@ -575,7 +710,6 @@
             const poiContainer = document.createElement('a-entity');
             poiContainer.id = 'poi-container';
 
-            // Cargar POIs desde Firestore
             loadingStatusText.textContent = 'Descargando Puntos de Interés...';
             try {
                 const q = query(poiCollectionRef);
@@ -589,7 +723,6 @@
                     const endDate = new Date(poi.endDate);
                     endDate.setHours(23, 59, 59, 999); 
 
-                    // Comprobar si el POI está activo hoy
                     if (now >= startDate && now <= endDate) {
                         const entity = document.createElement('a-entity');
                         entity.setAttribute('gltf-model', `url(${poi.modelUrl})`);
@@ -623,7 +756,7 @@
             arScene.addEventListener('loaded', () => {
                 console.log('Escena AR cargada');
                 arLoadingScreen.classList.remove('active');
-                startGPSWatch(); // Iniciar seguimiento GPS
+                startGPSWatch(); 
             });
         }
 
@@ -634,33 +767,40 @@
             }
             if (arScene) {
                 arScene.pause();
-                arScene.parentNode.removeChild(arScene);
+                if (arScene.parentNode) {
+                    arScene.parentNode.removeChild(arScene);
+                }
                 arScene = null;
             }
+            window.removeEventListener('gps-camera-update-position', onGPSUpdate);
+            window.removeEventListener('gps-camera-error', onGPSError);
             console.log('AR detenida.');
         }
 
-        function startGPSWatch() {
+        function onGPSUpdate(event) {
             const gpsStatusEl = document.getElementById('gps-status');
             const gpsAccuracyEl = document.getElementById('gps-accuracy');
+            if (!gpsStatusEl || !gpsAccuracyEl) return;
 
-            window.addEventListener('gps-camera-update-position', (event) => {
-                const pos = event.detail.position;
-                gpsStatusEl.textContent = 'Activo';
-                gpsAccuracyEl.textContent = `${pos.accuracy.toFixed(1)}m`;
-                
-                if (pos.accuracy < 10) gpsAccuracyEl.style.color = '#4CAF50';
-                else if (pos.accuracy < 20) gpsAccuracyEl.style.color = '#FFC107';
-                else gpsAccuracyEl.style.color = '#F44336';
-            });
-
-            window.addEventListener('gps-camera-error', (event) => {
-                gpsStatusEl.textContent = 'Error';
-                gpsAccuracyEl.textContent = '--';
-                showMessage('Error de GPS: ' + event.detail.message, 5000);
-            });
+            const pos = event.detail.position;
+            gpsStatusEl.textContent = 'Activo';
+            gpsAccuracyEl.textContent = `${pos.accuracy.toFixed(1)}m`;
+            
+            if (pos.accuracy < 10) gpsAccuracyEl.style.color = '#4CAF50';
+            else if (pos.accuracy < 20) gpsAccuracyEl.style.color = '#FFC107';
+            else gpsAccuracyEl.style.color = '#F44336';
         }
 
+        function onGPSError(event) {
+            const gpsStatusEl = document.getElementById('gps-status');
+            if (gpsStatusEl) gpsStatusEl.textContent = 'Error';
+            showMessage('Error de GPS: ' + event.detail.message, 5000);
+        }
+
+        function startGPSWatch() {
+            window.addEventListener('gps-camera-update-position', onGPSUpdate);
+            window.addEventListener('gps-camera-error', onGPSError);
+        }
 
         // --- Event Listeners de Navegación ---
         document.getElementById('goto-map-btn').addEventListener('click', () => navigateTo('map'));
@@ -668,18 +808,15 @@
         document.getElementById('back-to-admin-btn').addEventListener('click', () => navigateTo('admin'));
         document.getElementById('goto-ar-from-map-btn').addEventListener('click', () => navigateTo('ar'));
         document.getElementById('back-to-admin-from-ar-btn').addEventListener('click', () => navigateTo('admin'));
-        document.getElementById('jumpto-btn').addEventListener('click', jumpToCoords);
         document.getElementById('grant-permissions-btn').addEventListener('click', () => {
             permissionModal.style.display = 'none';
-            startARFlow(); // Reintentar el flujo
+            startARFlow(); 
         });
-
 
         // Iniciar la aplicación
         initializeApp();
     </script>
 </body>
 </html>
-
 
 
