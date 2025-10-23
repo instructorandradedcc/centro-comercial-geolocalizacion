@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-M">
+    <meta charset="UTF-8"> <!-- CORREGIDO: UTF-8 en lugar de UTF-M -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Panel de Administración AR (Geolocalización)</title>
     <!-- Favicon -->
@@ -433,7 +433,8 @@
          } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Versión de la App ---
-        const APP_VERSION = '1.29'; // Added Firebase Logging
+        // IMPORTANTE: Incrementar esta versión (ej. 1.29 -> 1.30) con CADA cambio, corrección o ajuste.
+        const APP_VERSION = '1.30'; // Incremented version
         // LocalStorage Key
         const LOCALSTORAGE_KEY = 'arAdminModelSelection';
 
@@ -1668,4 +1669,3 @@
     </script>
 </body>
 </html>
-
