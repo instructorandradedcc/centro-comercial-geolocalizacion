@@ -125,7 +125,7 @@
         #coords-jumpto {
             position: fixed; top: 20px; left: 20px; z-index: 402;
             background-color: rgba(255, 255, 255, 0.9);
-            padding: 10px; border-radius: 8px; display: flex; gap: 5px; align-items: center;
+            padding: 10px; border-radius: 8-px; display: flex; gap: 5px; align-items: center;
         }
         #map-center-coords {
              position: fixed; 
@@ -161,10 +161,41 @@
         #edit-location-panel {
              border: 2px solid #f59e0b; 
          } 
+         /* CORRECCIÓN MÓVIL: Panel de POIs en Mapa */
         #placed-pois-panel {
              left: auto; 
              right: 10px; 
-         } 
+             max-width: 250px; /* Reducido para móvil */
+             transition: transform 0.3s ease-out; /* Animación de despliegue */
+        }
+        #placed-pois-panel.minimized {
+             /* Oculta la lista dejando solo el control de zoom */
+             transform: translateX(calc(100% - 40px)); 
+             overflow-y: hidden;
+             box-shadow: none;
+             padding: 5px;
+        }
+        #placed-pois-panel.minimized h3, 
+        #placed-pois-panel.minimized .text-xs,
+        #placed-pois-panel.minimized #placed-pois-list {
+            display: none;
+        }
+        #toggle-pois-btn {
+            position: absolute;
+            top: 5px;
+            left: -35px; /* Coloca el botón fuera del panel (a la izquierda) */
+            background-color: #607d8b;
+            color: white;
+            padding: 5px;
+            border-radius: 4px 0 0 4px;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.2);
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 402;
+        }
+        /* FIN CORRECCIÓN MÓVIL */
+
+
         #placement-preview-image {
              max-width: 100px; 
              max-height: 100px; 
@@ -368,6 +399,9 @@
         
          <!-- Panel de POIs Guardados (Derecha) -->
          <div id="placed-pois-panel" class="map-panel right-3">
+             <!-- Botón de Ocultar/Mostrar -->
+             <button id="toggle-pois-btn" class="absolute top-1 left-[-35px] bg-gray-700 text-white p-1 rounded-l-md text-xs shadow-md">Ocultar</button>
+             
               <h3 class="text-lg font-semibold mb-2">Contenido en el Mapa</h3>
               <p class="text-xs text-amber-700 mb-2">Datos guardados en Firebase.</p>
              <div id="placed-pois-list" class="space-y-3">
@@ -471,8 +505,8 @@
          } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Versión de la App ---
-        // IMPORTANTE: Incrementar esta versión (ej. 1.31 -> 1.32) con CADA cambio, corrección o ajuste.
-        const APP_VERSION = '1.32'; // Corrección de la ruta de Firestore para usar projectId
+        // IMPORTANTE: Incrementar esta versión (ej. 1.33 -> 1.34) con CADA cambio, corrección o ajuste.
+        const APP_VERSION = '1.34'; // Fix AR permissions flow and Mobile UI/Toggle for Map POIs
         // LocalStorage Key
         const LOCALSTORAGE_KEY = 'arAdminModelSelection';
 
@@ -534,6 +568,8 @@
         let placementPreviewImageEl; 
         // Nuevos refs de Auth
         let loginPage, googleLoginBtn, logoutBtn, userInfo, userEmail;
+        // NUEVO ref para el botón de toggle en mapa
+        let togglePoisBtn;
 
 
         // --- Funciones ---
@@ -569,7 +605,9 @@
             }
 
             console.log(`Navigating to: ${pageName}`);
+            // Corrección: Asegura que todas las páginas se desactiven, incluso la de login
             Object.values(pages).forEach(p => p.classList.remove('active'));
+            
             if(pages[pageName]) {
                 pages[pageName].classList.add('active'); 
                 console.log(`Page ${pageName} activated.`);
@@ -617,6 +655,9 @@
             isEditingLocation = false; 
             currentEditingPoiId = null; 
             currentEditingMarker = null;
+            // Asegurar que el panel de POIs esté visible la próxima vez que se abra
+            if (placedPoisPanel) placedPoisPanel.classList.remove('minimized');
+            if (togglePoisBtn) togglePoisBtn.textContent = 'Ocultar';
         }
 
         // --- Persistence Functions ---
@@ -977,6 +1018,8 @@
                      console.log("Map page is active, calling updateMapMarkersAndPlacedList...");
                      updateMapMarkersAndPlacedList();
                      populatePlacementPanel(); 
+                     // Asegurar que el botón de toggle se muestre
+                     if (togglePoisBtn) togglePoisBtn.style.display = 'block';
                  } else {
                      console.log("Map page is not active, skipping map update.");
                  }
@@ -1054,9 +1097,24 @@
                 placedPoisList.addEventListener('click', handleDeletePoiOnMap);
                console.log("Delete listener attached to placed POIs list on map.");
             }
+            
+            // NUEVO: Inicializar listener para el botón de toggle del panel de POIs
+            if (togglePoisBtn) {
+                 togglePoisBtn.removeEventListener('click', handleTogglePoisPanel);
+                 togglePoisBtn.addEventListener('click', handleTogglePoisPanel);
+                 togglePoisBtn.style.display = 'block'; // Asegurar visibilidad al entrar al mapa
+            }
 
              setTimeout(() => { if (map) map.invalidateSize(); }, 200); 
              console.log("Map initialization complete.");
+        }
+
+        // NUEVO: Función para ocultar/mostrar el panel de POIs en el mapa
+        function handleTogglePoisPanel() {
+             if (placedPoisPanel && togglePoisBtn) {
+                 const isMinimized = placedPoisPanel.classList.toggle('minimized');
+                 togglePoisBtn.textContent = isMinimized ? 'Mostrar' : 'Ocultar';
+             }
         }
         
          function updateCenterCoordsDisplay() {
@@ -1563,110 +1621,353 @@
              });
          }
 
-         async function startARFlow() { 
-             // ... (no changes) ...
+         // NUEVA función para obtener permisos y manejar videos en AR
+         async function requestPermissionsAndSetupAR() {
+            if (!arLoadingScreen || !permissionModal || !loadingStatusText) return;
+            
+            arLoadingScreen.classList.add('active');
+            loadingStatusText.textContent = "Verificando permisos...";
+            
+            // 1. Verificar permiso de cámara
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                stream.getTracks().forEach(track => track.stop()); // Detener el stream inmediatamente
+                loadingStatusText.textContent = "Permiso de cámara OK.";
+            } catch (err) {
+                loadingStatusText.textContent = "Se necesita permiso de cámara.";
+                permissionModal.style.display = 'flex';
+                arLoadingScreen.classList.remove('active');
+                return false;
+            }
+            
+            // 2. Verificar permiso de ubicación
+            try {
+                loadingStatusText.textContent = "Verificando GPS...";
+                await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => resolve(pos),
+                        (err) => reject(err),
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                });
+                loadingStatusText.textContent = "Permiso de GPS OK.";
+            } catch (err) {
+                loadingStatusText.textContent = "Se necesita permiso de ubicación.";
+                permissionModal.style.display = 'flex';
+                arLoadingScreen.classList.remove('active');
+                return false;
+            }
+            
+            // 3. Inicializar AR
+            loadingStatusText.textContent = "Inicializando escena AR...";
+            initializeARScene();
+            
+            // 4. Iniciar videos (requiere interacción del usuario en móviles)
+            // Esto se hace en un timeout para asegurar que la escena se haya montado.
+            setTimeout(() => {
+                const videos = arScene ? arScene.querySelectorAll('a-video') : [];
+                if (videos.length > 0) {
+                     loadingStatusText.textContent = `Cargando ${videos.length} videos...`;
+                    videos.forEach(videoEntity => {
+                        const videoAsset = document.getElementById(videoEntity.getAttribute('src').substring(1));
+                        if (videoAsset) {
+                            // Intenta reproducir y silenciar videos para cumplir con la política de autoplay móvil
+                            videoAsset.muted = true;
+                            videoAsset.play().catch(e => console.warn("Video autoplay failed:", e));
+                        }
+                    });
+                     loadingStatusText.textContent = "Cámaras y recursos listos.";
+                }
+                 if (arLoadingScreen) arLoadingScreen.classList.remove('active');
+                 startGPSWatch();
+            }, 1500);
+
+            return true;
          }
-        async function initializeARScene() { 
-             // ... (no changes) ...
-        }
-        function stopAR() { 
-             // ... (no changes) ...
+
+         async function startARFlow() {
+             console.log("Starting AR Flow...");
+             await requestPermissionsAndSetupAR();
+         }
+        
+        async function initializeARScene() {
+            if (arScene) {
+                console.log("AR Scene already exists.");
+                return;
+            }                        
+            
+            const arContainer = document.getElementById('ar-scene-container');
+            if (!arContainer) { console.error("AR container not found!"); return; }
+            arContainer.innerHTML = ''; // Clear previous
+            
+            arScene = document.createElement('a-scene');
+            arScene.setAttribute('vr-mode-ui', 'enabled: false');
+            arScene.setAttribute('arjs', 'sourceType: webcam; videoTexture: true; debugUIEnabled: false; detectionMode: mono_and-matrix; matrixCodeType: 3x3;');
+            arScene.setAttribute('renderer', 'antialias: true; alpha: true; precision: medium;');
+            arScene.setAttribute('gesture-detector', '');
+            arScene.setAttribute('loading-screen', 'enabled: false');
+                        
+            arScene.addEventListener('gps-camera-update-position', onGPSUpdate);
+            arScene.addEventListener('gps-camera-error', onGPSError);
+            
+            const camera = document.createElement('a-camera');
+            camera.setAttribute('id', 'camera');
+            camera.setAttribute('gps-camera', 'minDistance: 1; maxDistance: 1000; alert: true; accuracyMin: 50; positionMinAccuracy: 50; highAccuracyTimeout: 60000; defaultLatitude: 4.0835; defaultLongitude: -76.1915');
+            camera.setAttribute('look-controls', 'enabled: false');
+            camera.setAttribute('arjs-look-controls', 'smoothingFactor: 0.1');
+            arScene.appendChild(camera);
+            
+            const assets = document.createElement('a-assets');
+            assets.setAttribute('timeout', '60000'); // 60 sec timeout                        
+            
+            const now = new Date();
+            let hasActiveAssets = false;
+            
+            allPoisData.forEach((poi, index) => {
+                const startDate = poi.startDate ? new Date(poi.startDate + "T00:00:00") : null;
+                const endDate = poi.endDate ? new Date(poi.endDate + "T23:59:59") : null;                                
+                
+                let isActive = false;
+                if (startDate && endDate) {
+                    isActive = now >= startDate && now <= endDate;
+                } else if (startDate) {
+                    isActive = now >= startDate;
+                } else {
+                    isActive = true;
+                }
+                
+                if (!isActive) {
+                    return;
+                }                                
+                if (typeof poi.lat !== 'number' || typeof poi.lon !== 'number') { 
+                     return;
+                }                                
+                
+                hasActiveAssets = true;
+                const assetId = `asset-${poi.id}`;
+                const entityId = `entity-${poi.id}`;
+                const scale = poi.scale || 1.0;
+                const groundHeight = poi.groundHeight || 0;
+                const soundUrl = poi.soundUrl || "";
+                
+                const entity = document.createElement('a-entity');
+                entity.setAttribute('id', entityId);
+                entity.setAttribute('data-poi-id', poi.id);
+                entity.setAttribute('data-name', poi.name);
+                entity.setAttribute('look-at', '[gps-camera]');
+                entity.setAttribute('gps-entity-place', `latitude: ${poi.lat}; longitude: ${poi.lon};`);
+                entity.setAttribute('position', `0 ${groundHeight} 0`);
+                entity.setAttribute('smooth', '0.1'); // Custom component for smoothing
+                entity.setAttribute('scale', `${scale} ${scale} ${scale}`);
+                entity.setAttribute('gesture-handler', 'minScale: 0.5; maxScale: 5');
+
+                if (poi.poiType === 'video' && poi.videoUrl) {
+                    const videoId = `video-${poi.id}`;
+                    const videoAsset = document.createElement('video');
+                    videoAsset.setAttribute('id', videoId);
+                    videoAsset.setAttribute('src', poi.videoUrl);
+                    videoAsset.setAttribute('crossorigin', 'anonymous');
+                    videoAsset.setAttribute('preload', 'auto');
+                    videoAsset.setAttribute('loop', 'true');
+                    // NO AUTOPLAY AQUÍ: Se hará en requestPermissionsAndSetupAR
+                    videoAsset.setAttribute('playsinline', 'true');
+                    videoAsset.setAttribute('webkit-playsinline', 'true');
+                    videoAsset.setAttribute('muted', 'true'); // Empezar siempre silenciado
+                    assets.appendChild(videoAsset);
+                    
+                    const videoWidth = 1; // Base width
+                    const videoHeight = (9 / 16) * videoWidth; // Assume 16:9
+                    
+                    const videoEntity = document.createElement('a-video');
+                    videoEntity.setAttribute('src', `#${videoId}`);
+                    videoEntity.setAttribute('width', videoWidth.toFixed(2));
+                    videoEntity.setAttribute('height', videoHeight.toFixed(2));
+                    videoEntity.setAttribute('position', `0 ${(videoHeight / 2).toFixed(2)} 0`); // Center vertically
+                    
+                    entity.setAttribute('scale', `${scale} ${scale} ${scale}`); // Scale applies to plane size
+                    entity.appendChild(videoEntity);
+
+                    // Add click to play/unmute 
+                    videoEntity.addEventListener('click', () => {
+                        const currentVideo = document.getElementById(videoId);
+                        if (currentVideo && currentVideo.muted) {
+                            currentVideo.muted = false;
+                            currentVideo.play().catch(e => showMessage("Error al reproducir audio: " + e.message, 3000));
+                            showMessage(`Sonido activado para: ${poi.name}`, 2000);
+                        } else if (currentVideo) {
+                             currentVideo.muted = true;
+                             showMessage(`Sonido desactivado para: ${poi.name}`, 2000);
+                        }
+                    });
+
+                } else if (poi.poiType === 'model' && poi.modelUrl) {
+                    const modelAsset = document.createElement('a-asset-item');
+                    modelAsset.setAttribute('id', assetId);
+                    modelAsset.setAttribute('src', poi.modelUrl);
+                    modelAsset.setAttribute('crossorigin', 'anonymous');
+                    modelAsset.setAttribute('response-type', 'arraybuffer');
+                    assets.appendChild(modelAsset);
+                    
+                    const modelEntity = document.createElement('a-gltf-model');
+                    modelEntity.setAttribute('src', `#${assetId}`);
+                    modelEntity.setAttribute('animation-mixer', '');
+                    modelEntity.setAttribute('shadow', 'receive: false');
+                    entity.appendChild(modelEntity);
+                }
+                
+                if (soundUrl) {
+                    const soundId = `sound-${poi.id}`;
+                    const soundAsset = document.createElement('audio');
+                    soundAsset.setAttribute('id', soundId);
+                    soundAsset.setAttribute('src', soundUrl);
+                    soundAsset.setAttribute('crossorigin', 'anonymous');
+                    soundAsset.setAttribute('preload', 'auto');
+                    soundAsset.setAttribute('loop', 'true');
+                    assets.appendChild(soundAsset);
+                    
+                    // Nota: El sonido se inicia silenciado junto con el video en requestPermissionsAndSetupAR
+                    entity.setAttribute('sound', `src: #${soundId}; autoplay: true; volume: 0.5`);
+                }
+                arScene.appendChild(entity);
+            });
+
+            arScene.appendChild(assets);
+            arContainer.appendChild(arScene);
+            console.log("AR Scene and assets appended.");
+            
+            if (!hasActiveAssets) {
+                loadingStatusText.textContent = "No hay contenido activo para hoy.";
+                showMessage("No hay contenido activo configurado para la fecha de hoy.", 5000);
+            }
         }
 
-        function onGPSUpdate(event) { 
-             // ... (no changes) ...
-        }
-        function onGPSError(event) { 
-             // ... (no changes) ...
-        }
-        function startGPSWatch() { 
-             // ... (no changes) ...
-        }
+        function stopAR() {
+            console.log("Stopping AR...");
+            if (gpsWatchId) {
+                navigator.geolocation.clearWatch(gpsWatchId);
+                gpsWatchId = null;
+                console.log("GPS Watch stopped.");
+            }
+            if (arScene) {
+                try {
+                    // Pause A-Frame scene
+                    arScene.pause();
+                    arScene.removeEventListener('gps-camera-update-position', onGPSUpdate);
+                    arScene.removeEventListener('gps-camera-error', onGPSError);
+                                        
+                    // Stop all media
+                    arScene.querySelectorAll('video, audio').forEach(media => {
+                        media.pause();
+                        media.src = '';
+                        media.load();
+                    });
 
-
-        // =================================================================
-        // --- SECCIÓN CORREGIDA (Listeners de Navegación) ---
-        // =================================================================
-
-         function setupNavigationListeners() {
+                    // Force remove AR.js video background
+                    const arVideo = document.querySelector('.arjs-video');
+                    if (arVideo) {
+                        arVideo.pause();
+                        arVideo.srcObject = null;
+                        arVideo.remove();
+                        console.log("AR.js video element removed.");
+                    }
+                } catch (e) { 
+                     console.warn("Error during AR scene cleanup:", e);
+                }                                
+                const arContainer = document.getElementById('ar-scene-container');
+                if (arContainer) arContainer.innerHTML = ''; // Clear scene from DOM                                
+                arScene = null;
+                console.log("AR Scene removed from DOM.");
+            }
+            if (arLoadingScreen) arLoadingScreen.classList.remove('active');
+            const gpsStatusEl = document.getElementById('gps-status');
+            const gpsAccuracyEl = document.getElementById('gps-accuracy');
+            if (gpsStatusEl) gpsStatusEl.textContent = "Buscando...";
+            if (gpsAccuracyEl) gpsAccuracyEl.textContent = "--";
+        }
+        
+        function onGPSUpdate(event) {
+            const pos = event.detail.position;
+            const accuracy = pos.coords.accuracy.toFixed(2);
+            // console.log(`GPS Update: Lat: ${pos.coords.latitude}, Lon: ${pos.coords.longitude}, Acc: ${accuracy}m`);
+            const gpsStatusEl = document.getElementById('gps-status');
+            const gpsAccuracyEl = document.getElementById('gps-accuracy');
+                        
+            if (gpsStatusEl) gpsStatusEl.textContent = "OK";
+            if (gpsAccuracyEl) { 
+                 gpsAccuracyEl.textContent = `${accuracy}`; 
+                 if (pos.coords.accuracy > 50) { 
+                     gpsAccuracyEl.style.color = 'red'; 
+                 } else if (pos.coords.accuracy > 25) { 
+                     gpsAccuracyEl.style.color = 'orange'; 
+                 } else { 
+                     gpsAccuracyEl.style.color = 'lime'; 
+                 }
+            }
+        }
+        
+        function onGPSError(event) {
+            console.error("GPS Error:", event.detail);
+            const gpsStatusEl = document.getElementById('gps-status');
+            if (gpsStatusEl) gpsStatusEl.textContent = "Error";
+            const gpsAccuracyEl = document.getElementById('gps-accuracy');
+            if (gpsAccuracyEl) { 
+                 gpsAccuracyEl.textContent = "N/A"; 
+                 gpsAccuracyEl.style.color = 'red';
+            }
+            let errorMsg = "Error de GPS.";
+            if (event.detail.code === 1) errorMsg = "Permiso de GPS denegado.";
+            else if (event.detail.code === 2) errorMsg = "Señal de GPS perdida.";
+            else if (event.detail.code === 3) errorMsg = "GPS tardó demasiado en responder.";
+            showMessage(errorMsg, 4000);
+        }
+        
+        function startGPSWatch() {
+            if (gpsWatchId) { 
+                 console.log("GPS Watch already active.");
+                return;
+            }
+            console.log("Starting high-accuracy GPS Watch...");
+            gpsWatchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    // This is just a backup watch, the a-frame event 'gps-camera-update-position'
+                    // is the primary one used for the UI.
+                    // We could log this if needed for debugging.
+                    // console.log(`Watch Update: Acc: ${pos.coords.accuracy.toFixed(2)}m`);
+                },
+                (err) => { 
+                     console.error("Geolocation watch error:", err); 
+                     onGPSError({ detail: err }); // Pass to a-frame error handler
+                },
+                { enableHighAccuracy: true, timeout: 60000, maximumAge: 0 }
+            );
+        }
+        
+        // --- Event Listeners Setup ---        
+        function setupNavigationListeners() {
             console.log("Setting up navigation listeners...");
 
-            // --- Página 1: Admin ---
-            const gotoMapBtn = document.getElementById('goto-map-btn');
-            if (gotoMapBtn) {
-                gotoMapBtn.addEventListener('click', handleGoToMap);
-                console.log("Listener added for: goto-map-btn");
-            } else {
-                console.warn("Button not found: goto-map-btn");
-            }
+            document.getElementById('goto-map-btn')?.addEventListener('click', handleGoToMap);
+            document.getElementById('back-to-admin-btn')?.addEventListener('click', handleBackToAdmin);
+            document.getElementById('goto-summary-btn')?.addEventListener('click', handleGoToSummary);
+            document.getElementById('back-to-map-btn')?.addEventListener('click', () => navigateTo('map'));
+            document.getElementById('launch-ar-btn')?.addEventListener('click', handleLaunchAR);
+            document.getElementById('back-to-summary-btn')?.addEventListener('click', handleBackToSummary);
+            document.getElementById('grant-permissions-btn')?.addEventListener('click', handleGrantPermissions);
 
-            // --- Página 2: Mapa ---
-            const backToAdminBtn = document.getElementById('back-to-admin-btn');
-            if (backToAdminBtn) {
-                backToAdminBtn.addEventListener('click', handleBackToAdmin);
-                console.log("Listener added for: back-to-admin-btn");
-            } else {
-                console.warn("Button not found: back-to-admin-btn");
-            }
+            // NUEVO: Listener para el botón de toggle del panel de POIs
+            document.getElementById('toggle-pois-btn')?.addEventListener('click', handleTogglePoisPanel);
+        }
 
-            const gotoSummaryBtn = document.getElementById('goto-summary-btn');
-            if (gotoSummaryBtn) {
-                gotoSummaryBtn.addEventListener('click', handleGoToSummary);
-                console.log("Listener added for: goto-summary-btn");
-            } else {
-                console.warn("Button not found: goto-summary-btn");
-            }
-
-            // --- Página 3: Resumen ---
-            const backToMapBtn = document.getElementById('back-to-map-btn');
-            if (backToMapBtn) {
-                backToMapBtn.addEventListener('click', handleGoToMap); // Reutiliza handleGoToMap
-                console.log("Listener added for: back-to-map-btn");
-            } else {
-                console.warn("Button not found: back-to-map-btn");
-            }
-
-            const launchArBtn = document.getElementById('launch-ar-btn');
-            if (launchArBtn) {
-                launchArBtn.addEventListener('click', handleLaunchAR);
-                console.log("Listener added for: launch-ar-btn");
-            } else {
-                console.warn("Button not found: launch-ar-btn");
-            }
-
-            // --- Página 4: AR ---
-            const backToSummaryBtn = document.getElementById('back-to-summary-btn');
-            if (backToSummaryBtn) {
-                backToSummaryBtn.addEventListener('click', handleBackToSummary);
-                console.log("Listener added for: back-to-summary-btn");
-            } else {
-                console.warn("Button not found: back-to-summary-btn");
-            }
-
-            // --- Modal de Permisos ---
-            const grantPermissionsBtn = document.getElementById('grant-permissions-btn');
-            if (grantPermissionsBtn) {
-                grantPermissionsBtn.addEventListener('click', handleGrantPermissions);
-                console.log("Listener added for: grant-permissions-btn");
-            } else {
-                console.warn("Button not found: grant-permissions-btn");
-            }
-         }
-
-         function handleGoToMap() { console.log("goto-map clicked"); navigateTo('map'); } 
-         function handleGoToSummary() { console.log("goto-summary clicked"); navigateTo('summary'); } 
-         function handleBackToAdmin() { console.log("back-to-admin clicked"); navigateTo('admin'); } 
-         function handleLaunchAR() { console.log("launch-ar clicked"); navigateTo('ar'); } 
-         function handleBackToSummary() { console.log("back-to-summary clicked"); navigateTo('summary'); } 
-         function handleGrantPermissions() { 
-             console.log("grant-permissions clicked");
-             if (permissionModal) permissionModal.style.display = 'none';
-             startARFlow(); 
-         }
-
-        // =================================================================
-        // --- FIN DE SECCIÓN CORREGIDA ---
-        // =================================================================
+        function handleGoToMap() { console.log("goto-map clicked"); navigateTo('map'); }
+        function handleGoToSummary() { console.log("goto-summary clicked"); navigateTo('summary'); }
+        function handleBackToAdmin() { console.log("back-to-admin clicked"); navigateTo('admin'); }
+        function handleLaunchAR() { console.log("launch-ar clicked"); navigateTo('ar'); }
+        function handleBackToSummary() { console.log("back-to-summary clicked"); navigateTo('summary'); }
+        function handleGrantPermissions() {
+            console.log("grant-permissions clicked");
+            if (permissionModal) permissionModal.style.display = 'none';
+            startARFlow();
+        }
 
 
         // --- App Initialization (DOMContentLoaded) --- 
@@ -1726,6 +2027,7 @@
              cancelEditLocationBtn = document.getElementById('cancel-edit-location-btn');
              mapCenterCoordsEl = document.getElementById('map-center-coords'); 
              placementPreviewImageEl = document.getElementById('placement-preview-image'); 
+             togglePoisBtn = document.getElementById('toggle-pois-btn'); // NUEVO
 
              // Refs Página Resumen
              summaryPoiList = document.getElementById('summary-poi-list');
@@ -1811,4 +2113,3 @@
     </script>
 </body>
 </html>
-
