@@ -200,16 +200,34 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
+    <!-- PÁGINA 0: Login (NUEVA) -->
+    <div id="login-page" class="page active flex items-center justify-center bg-gray-200">
+        <div class="bg-white p-10 rounded-lg shadow-xl text-center max-w-sm w-full">
+            <h1 class="text-3xl font-bold text-blue-700 mb-6">Admin AR</h1>
+            <p class="text-gray-600 mb-8">Por favor, inicia sesión para continuar.</p>
+            <button id="google-login-btn" class="control-button bg-blue-500 hover:bg-blue-600 w-full flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21.35 12.24c0-.79-.07-1.54-.2-2.28h-9.15v4.3h5.16c-.22 1.4-.87 2.6-1.95 3.4v2.8h3.59c2.1-1.9 3.3-4.5 3.3-7.22z"/><path d="M12 21.8c2.6 0 4.7-.87 6.2-2.3l-3.6-2.8c-.87.6-1.9.9-3.1.9-2.4 0-4.5-1.6-5.2-3.8H3.1v2.9c1.5 3 4.5 5 8.2 5z"/><path d="M6.8 14.3c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8V7.8H3.1c-.6 1.2-1 2.5-1 4s.4 2.8 1 4l3.7-2.9z"/><path d="M12 6.3c1.4 0 2.6.5 3.6 1.4l3.2-3.2C17.2 2.8 14.8 2 12 2c-3.7 0-6.7 2-8.2 5l3.7 2.9c.7-2.2 2.8-3.8 5.2-3.8z"/></svg>
+                <span>Iniciar Sesión con Google</span>
+            </button>
+        </div>
+    </div>
+
     <!-- PÁGINA 1: Panel de Administración (Selección de Modelos) -->
-    <div id="admin-page" class="page active">
+    <div id="admin-page" class="page"> <!-- 'active' quitado -->
         <div class="container mx-auto p-6 max-w-4xl">
             <div class="flex justify-between items-center mb-8">
-                <h1 class="text-3xl font-bold text-blue-700">
-                    Panel de Administración AR
-                    <span id="version-display" class="text-sm align-middle font-normal text-gray-400 ml-2"></span>
-                </h1>
                 <div>
-                    <button id="goto-map-btn" class="control-button bg-indigo-500 hover:bg-indigo-600" disabled>Ir al Mapa</button> 
+                    <h1 class="text-3xl font-bold text-blue-700">Panel de Administración AR</h1>
+                    <div class="text-sm text-gray-500 mt-1">
+                        <span id="version-display" class="font-normal align-middle"></span>
+                        <span id="user-info" class="hidden ml-4">
+                            Logueado como: <strong id="user-email"></strong>
+                        </span>
+                    </div>
+                </div>
+                <div>
+                    <button id="logout-btn" class="control-button bg-red-500 hover:bg-red-600 hidden">Salir</button>
+                    <button id="goto-map-btn" class="control-button bg-indigo-500 hover:bg-indigo-600 ml-2" disabled>Ir al Mapa</button> 
                 </div>
             </div>
 
@@ -418,7 +436,13 @@
     <script type="module">
         // Importa las funciones necesarias de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged, 
+            GoogleAuthProvider, 
+            signInWithPopup, 
+            signOut
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, 
             collection, 
@@ -433,8 +457,8 @@
          } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Versión de la App ---
-        // IMPORTANTE: Incrementar esta versión (ej. 1.29 -> 1.30) con CADA cambio, corrección o ajuste.
-        const APP_VERSION = '1.30'; // Incremented version
+        // IMPORTANTE: Incrementar esta versión (ej. 1.30 -> 1.31) con CADA cambio, corrección o ajuste.
+        const APP_VERSION = '1.31'; // Implementado Google Auth y fix Resumen
         // LocalStorage Key
         const LOCALSTORAGE_KEY = 'arAdminModelSelection';
 
@@ -453,7 +477,7 @@
 
         // --- Configuración de Firebase ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; 
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null; // Ya no se usa para Google Auth
         const firebaseConfig = { 
          apiKey: "AIzaSyBkxP7vqrVZMRhl-vUpHMMKjj5aIujDQ3k", 
          authDomain: "centro-comercial-1ea64.firebaseapp.com", 
@@ -486,14 +510,17 @@
         // --- Referencias a Elementos DOM (se asignarán en DOMContentLoaded) ---
         let pages = {};
         let messageBox, permissionModal, arLoadingScreen, loadingStatusText, versionDisplay; 
-        let listContainer, loadingPois, ecopiensaSelectionList, loadingModelsPlaceholder, selectVideoCheckbox, clearSelectionBtn; // Added clearSelectionBtn
-        let placementPanel, modelsToPlaceList, placementFormContainer, placingModelName, cancelPlacementBtn, savePlacementBtn, backToSelectionBtn; // Added backToSelectionBtn
+        let listContainer, loadingPois, ecopiensaSelectionList, loadingModelsPlaceholder, selectVideoCheckbox, clearSelectionBtn;
+        let placementPanel, modelsToPlaceList, placementFormContainer, placingModelName, cancelPlacementBtn, savePlacementBtn, backToSelectionBtn;
         let mapZoomSlider, jumptoBtn, placePoiTypeSelect, modelFieldsDiv, videoFieldsDiv, placeModelUrlInput, placeVideoUrlInput, placeNameInput;
         let placedPoisPanel, placedPoisList, editLocationPanel, editingPoiNameEl, saveEditLocationBtn, cancelEditLocationBtn;
         let summaryPoiList, loadingSummaryPois;
         let gotoMapButton; 
         let mapCenterCoordsEl; 
         let placementPreviewImageEl; 
+        // Nuevos refs de Auth
+        let loginPage, googleLoginBtn, logoutBtn, userInfo, userEmail;
+
 
         // --- Funciones ---
 
@@ -509,15 +536,21 @@
         }
 
         function navigateTo(pageName) {
-            // ... (no changes) ...
             if (Object.keys(pages).length === 0) { 
                 console.error("Attempted to navigate before pages object was populated."); 
                 return; 
             }
-
-            if ((pageName === 'map' || pageName === 'summary' || pageName === 'ar') && !firebaseReady) {
-                showMessage("Aguarde un momento, conectando con la base de datos...", 3000);
-                console.warn(`Attempt to navigate to ${pageName} before Firebase is ready.`);
+            
+            // La página de Login siempre debe ser accesible
+            if (pageName !== 'login' && !firebaseReady) {
+                 if ((pageName === 'map' || pageName === 'summary' || pageName === 'ar')) {
+                    showMessage("Aguarde un momento, conectando con la base de datos...", 3000);
+                    console.warn(`Attempt to navigate to ${pageName} before Firebase is ready.`);
+                 } else if (pageName === 'admin' && !firebaseReady) {
+                     // No mostrar mensaje si se intenta ir a admin sin estar listo (onAuthStateChanged lo hará)
+                 } else {
+                     console.warn(`Navigation to ${pageName} blocked, Firebase not ready.`);
+                 }
                 return; 
             }
 
@@ -527,8 +560,8 @@
                 pages[pageName].classList.add('active'); 
                 console.log(`Page ${pageName} activated.`);
             } else { 
-                console.error(`Page not found: ${pageName}. Falling back to admin.`); 
-                if (pages.admin) pages.admin.classList.add('active'); 
+                console.error(`Page not found: ${pageName}. Falling back to login.`); 
+                if (pages.login) pages.login.classList.add('active'); 
                  return;
             }
 
@@ -539,7 +572,7 @@
             } else if (pageName === 'summary') { 
                 stopAR(); 
                  stopMap(); 
-                 populateSummaryPage(); 
+                 populateSummaryPage(); // Esta función ahora tiene código
             } else if (pageName === 'ar') { 
                 stopMap(); 
                 startARFlow(); 
@@ -547,6 +580,9 @@
                 stopAR(); 
                 stopMap(); 
                 initializeModelSelection(); 
+            } else if (pageName === 'login') {
+                stopAR();
+                stopMap();
             }
         }
 
@@ -610,7 +646,6 @@
 
         // --- Firebase Logic ---
         async function initializeFirebase() { 
-             // ADDED LOGGING
             console.log("Initializing Firebase..."); 
             if (loadingPois) loadingPois.textContent = "Inicializando conexión Firebase...";
             if (gotoMapButton) gotoMapButton.disabled = true; 
@@ -632,94 +667,110 @@
                 console.log("Firestore and Auth services obtained.");
                 setLogLevel('Debug'); 
                 
-                 console.log("Setting up Auth State Listener..."); // ADDED
+                console.log("Setting up Auth State Listener...");
                 onAuthStateChanged(auth, async (user) => {
-                    console.log("Auth state changed callback triggered."); // ADDED
+                    console.log("Auth state changed callback triggered.");
                     if (user) {
+                        // --- Usuario Logueado ---
                         userId = user.uid;
-                        console.log('Firebase User Authenticated. UID:', userId); // MODIFIED
+                        console.log('Firebase User Authenticated. UID:', userId);
+                        if (userEmail) userEmail.textContent = user.email || userId;
+                        if (userInfo) userInfo.classList.remove('hidden');
+                        if (logoutBtn) logoutBtn.classList.remove('hidden');
                         
+                        // --- RUTA DE DATOS PRIVADA POR USUARIO ---
                         const currentAppId = (appId === 'default-app-id' && firebaseConfig.appId) ? firebaseConfig.appId : appId;
-                        const collectionPath = `/artifacts/${currentAppId}/public/data/pois`;
+                        const collectionPath = `/artifacts/${currentAppId}/users/${userId}/pois`;
                         poiCollectionRef = collection(db, collectionPath);
-                        console.log('POI Collection configured:', collectionPath);
+                        console.log('POI Collection configured to user-specific path:', collectionPath);
                         
                         firebaseReady = true; 
-                         console.log('Firebase is Ready. Enabling GoToMap button...'); // ADDED
+                        console.log('Firebase is Ready. Enabling GoToMap button...');
                         if (gotoMapButton) {
                             gotoMapButton.disabled = false; 
-                             console.log("GoToMap button ENABLED."); // MODIFIED
-                        } else {
-                            console.warn("GoToMap button not found when trying to enable."); // ADDED
+                             console.log("GoToMap button ENABLED.");
                         }
                         if (loadingPois && (loadingPois.textContent.startsWith("Conectando") || loadingPois.textContent.startsWith("Inicializando"))) { 
                              loadingPois.textContent = "Conexión exitosa. Cargando POIs..."; 
                          }
-                        showMessage("Conectado a la base de datos.", 2000);
+                        showMessage(`Bienvenido, ${user.displayName || user.email}`, 2000);
                         
-                        console.log('Calling loadAndListenPois...'); // ADDED
+                        console.log('Calling loadAndListenPois...');
                         loadAndListenPois(); 
+                        
+                        // Mover a la página de admin si estaba en login
+                        if (pages.login?.classList.contains('active')) {
+                            navigateTo('admin');
+                        }
+
                      } else {
+                        // --- Usuario Deslogueado ---
                         userId = null;
                         poiCollectionRef = null;
                         firebaseReady = false; 
-                         console.log('Firebase User signed out or not authenticated.'); // ADDED
+                         console.log('Firebase User signed out.');
                         if (gotoMapButton) {
                            gotoMapButton.disabled = true; 
-                            console.log('GoToMap button DISABLED (no user).'); // ADDED
+                            console.log('GoToMap button DISABLED (no user).');
                         }
-                        if (listContainer) listContainer.innerHTML = '<p class="text-red-500 font-semibold">Error: Autenticación fallida o cerrada.</p>';
+                        if (userInfo) userInfo.classList.add('hidden');
+                        if (logoutBtn) logoutBtn.classList.add('hidden');
+                        if (userEmail) userEmail.textContent = "";
+
+                        // Limpiar datos
+                        if (listContainer) listContainer.innerHTML = '<p class="text-gray-500 font-semibold">Inicia sesión para ver tus datos.</p>';
                         allPoisData = []; 
-                         poiDataMap.clear(); 
-                         console.error("Firebase User signed out or failed authentication.");
-                        showMessage("Error de autenticación con Firebase. No se pueden cargar datos.", 5000);
+                        poiDataMap.clear(); 
+                        
+                        // Forzar navegación a Login
+                        navigateTo('login');
                     }
                 });
                 console.log("Auth state listener attached.");
 
-                // Attempt Sign In
-                console.log("Attempting sign in..."); // ADDED
-                try {
-                    if (initialAuthToken) {
-                        console.log("Attempting sign in with custom token...");
-                        await signInWithCustomToken(auth, initialAuthToken);
-                        console.log("Signed in with custom token SUCCESS."); // MODIFIED
-                    } else {
-                        console.log("Attempting anonymous sign in...");
-                        await signInAnonymously(auth);
-                        console.log("Signed in anonymously SUCCESS."); // MODIFIED
-                    }
-                } catch (authError) {
-                    // Log specific errors
-                    console.error("Firebase Auth Error during sign-in:", authError.code, authError.message); // MODIFIED
-                    firebaseReady = false;
-                    if (gotoMapButton) {
-                        gotoMapButton.disabled = true;
-                        console.log('GoToMap button DISABLED (auth error).'); // ADDED
-                    }
-                    let detailedErrorMsg = `Error de Autenticación: ${authError.code || authError.message}`;
-                    if (authError.code === 'auth/admin-restricted-operation' || authError.code === 'auth/operation-not-allowed') {
-                        detailedErrorMsg += " (VERIFICA: Inicio Anónimo habilitado Y dominio autorizado en Firebase Auth -> Settings)"; // MODIFIED
-                    } else if (authError.message.includes("network")) {
-                        detailedErrorMsg += " (Problema de red)";
-                    }
-                    if (loadingPois) loadingPois.textContent = detailedErrorMsg;
-                    showMessage(detailedErrorMsg, 15000); 
-                 }
-
             } catch (initError) { 
-                console.error("Firebase Initialization Error:", initError); // MODIFIED
+                console.error("Firebase Initialization Error:", initError);
                 firebaseReady = false; 
-                 if (gotoMapButton) { 
-                    gotoMapButton.disabled = true; 
-                     console.log('GoToMap button DISABLED (init error).'); // ADDED
-                }
+                 if (gotoMapButton) gotoMapButton.disabled = true; 
                 const errorMsg = `Error fatal al inicializar Firebase: ${initError.message}. Verifica la config y la conexión.`;
                 if(loadingPois) loadingPois.textContent = errorMsg;
                 showMessage(errorMsg, 10000);
             }
         }
         
+        // --- Nuevas Funciones de Auth ---
+        async function handleGoogleLogin() {
+            const provider = new GoogleAuthProvider();
+            if (!auth) {
+                 console.error("Auth no inicializado.");
+                 showMessage("Error: Servicio de autenticación no listo.", 3000);
+                 return;
+            }
+            try {
+                await signInWithPopup(auth, provider);
+                // onAuthStateChanged se encargará del resto
+            } catch (error) {
+                console.error("Error Google Login:", error);
+                showMessage("Error al iniciar sesión: " + error.message, 5000);
+            }
+        }
+
+        async function handleLogout() {
+             if (!auth) {
+                 console.error("Auth no inicializado.");
+                 return;
+             }
+            try {
+                await signOut(auth);
+                showMessage("Sesión cerrada.", 2000);
+                // onAuthStateChanged se encargará de navegar a login
+            } catch (error) {
+                console.error("Error Logout:", error);
+                showMessage("Error al cerrar sesión.", 3000);
+            }
+        }
+
+
         function displayAppVersion() {
              // ... (no changes) ...
              if (versionDisplay) {
@@ -826,8 +877,8 @@
         function loadAndListenPois() {
              // ... (no changes) ...
              if (!poiCollectionRef) { 
-                 console.warn("loadAndListenPois called before poiCollectionRef is set."); 
-                 if (loadingPois && !loadingPois.textContent.toLowerCase().includes("error")) loadingPois.textContent = "Esperando configuración de base de datos..."; 
+                 console.warn("loadAndListenPois called before poiCollectionRef is set (user might be logged out)."); 
+                 if (loadingPois && !loadingPois.textContent.toLowerCase().includes("error")) loadingPois.textContent = "Esperando inicio de sesión..."; 
                  return; 
              }
              if (!listContainer || !loadingPois) { 
@@ -911,6 +962,11 @@
                  } else {
                      console.log("Map page is not active, skipping map update.");
                  }
+                 
+                 // Actualizar resumen si está activo
+                 if (pages.summary?.classList.contains('active')) {
+                     populateSummaryPage();
+                 }
 
              }, (error) => {
                  console.error("Error listening to POIs (Firestore):", error);
@@ -928,6 +984,7 @@
              if (!firebaseReady || !poiCollectionRef) { 
                  showMessage("La base de datos no está lista. Por favor espere...", 3000);
                 console.warn("Attempted to initMap before Firebase was ready.");
+                navigateTo('login'); // Forzar login si se intenta entrar al mapa sin estar listo
                 return; 
              }
              if (map) { 
@@ -1433,8 +1490,59 @@
              }
          }
         
+         // --- FUNCIÓN DE RESUMEN IMPLEMENTADA ---
          function populateSummaryPage() {
-             // ... (no changes) ...
+             if (!summaryPoiList || !loadingSummaryPois) {
+                  console.error("Summary page elements not found.");
+                  return;
+             }
+             
+             console.log("Populating summary page with allPoisData:", allPoisData);
+             loadingSummaryPois.style.display = 'none';
+             summaryPoiList.innerHTML = ''; // Clear list
+
+             if (allPoisData.length === 0) {
+                 summaryPoiList.innerHTML = '<p class="text-gray-500">No hay contenido configurado para mostrar.</p>';
+                 return;
+             }
+
+             allPoisData.forEach(poi => {
+                 const poiElement = document.createElement('div');
+                 poiElement.className = 'poi-item p-4 border border-gray-200 rounded-lg shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4 items-center';
+                 
+                 let typeLabel = poi.poiType === 'video' ? 'Video' : 'Modelo 3D';
+                 let urlToShow = poi.poiType === 'video' ? (poi.videoUrl || 'N/A') : (poi.modelUrl || 'N/A');
+                 if (urlToShow.length > 30) urlToShow = urlToShow.substring(0, 27) + '...';
+
+                 let imageUrl = '';
+                 if (poi.poiType === 'model' && poi.modelUrl) {
+                     const ecoModel = ECOPIENSA_MODELS.find(m => m.modelUrl === poi.modelUrl);
+                     if (ecoModel) imageUrl = ecoModel.imageUrl;
+                 } else if (poi.poiType === 'video') {
+                     imageUrl = CUSTOM_VIDEO_PLACEHOLDER.imageUrl;
+                 }
+
+                 poiElement.innerHTML = `
+                     <div class="flex items-center gap-4">
+                         ${imageUrl ? `<img src="${imageUrl}" alt="Preview" class="w-16 h-16 rounded-md object-cover border" onerror="this.style.display='none'">` : '<div class="w-16 h-16 rounded-md bg-gray-100 border"></div>'}
+                         <div>
+                             <strong class="block text-lg text-gray-800">${poi.name || 'Sin Nombre'}</strong>
+                             <span class="block text-sm ${poi.poiType === 'video' ? 'text-purple-600' : 'text-blue-600'}">${typeLabel}</span>
+                         </div>
+                     </div>
+                     <div class="text-sm">
+                         <span class="block"><strong>Ubicación:</strong></span>
+                         <span class="block">Lat: ${poi.lat?.toFixed(6) || 'N/A'}</span>
+                         <span class="block">Lon: ${poi.lon?.toFixed(6) || 'N/A'}</span>
+                     </div>
+                     <div class="text-sm">
+                         <span class="block"><strong>Vigencia:</strong></span>
+                         <span class="block">Inicia: ${poi.startDate || 'N/A'}</span>
+                         <span class="block">Termina: ${poi.endDate || 'N/A'}</span>
+                     </div>
+                 `;
+                 summaryPoiList.appendChild(poiElement);
+             });
          }
 
          async function startARFlow() { 
@@ -1459,7 +1567,7 @@
 
 
         // =================================================================
-        // --- SECCIÓN CORREGIDA ---
+        // --- SECCIÓN CORREGIDA (Listeners de Navegación) ---
         // =================================================================
 
          function setupNavigationListeners() {
@@ -1545,25 +1653,38 @@
 
         // --- App Initialization (DOMContentLoaded) --- 
          document.addEventListener('DOMContentLoaded', () => {
-             // ... (resto de asignaciones sin cambios) ...
              console.log("DOM fully loaded and parsed.");
              
              // Asignar referencias a elementos DOM aquí
+             pages.login = document.getElementById('login-page');
              pages.admin = document.getElementById('admin-page');
              pages.map = document.getElementById('map-page');
              pages.summary = document.getElementById('summary-page');
              pages.ar = document.getElementById('ar-page');
+             
              messageBox = document.getElementById('message-box');
              permissionModal = document.getElementById('permission-modal');
              arLoadingScreen = document.getElementById('ar-loading-screen');
              loadingStatusText = document.getElementById('loading-status-text');
              versionDisplay = document.getElementById('version-display'); 
+             
+             // Refs de Auth
+             loginPage = document.getElementById('login-page');
+             googleLoginBtn = document.getElementById('google-login-btn');
+             logoutBtn = document.getElementById('logout-btn');
+             userInfo = document.getElementById('user-info');
+             userEmail = document.getElementById('user-email');
+
+             // Refs Página Admin
              listContainer = document.getElementById('poi-list-container');
              loadingPois = document.getElementById('loading-pois');
              ecopiensaSelectionList = document.getElementById('ecopiensa-selection-list');
              loadingModelsPlaceholder = document.getElementById('loading-models-placeholder');
              selectVideoCheckbox = document.getElementById('select-video-cb');
              gotoMapButton = document.getElementById('goto-map-btn'); 
+             clearSelectionBtn = document.getElementById('clear-selection-btn'); 
+
+             // Refs Página Mapa
              placementPanel = document.getElementById('placement-panel');
              modelsToPlaceList = document.getElementById('models-to-place-list');
              placementFormContainer = document.getElementById('placement-form-container');
@@ -1571,7 +1692,6 @@
              cancelPlacementBtn = document.getElementById('cancel-placement-btn');
              savePlacementBtn = document.getElementById('save-placement-btn');
              backToSelectionBtn = document.getElementById('back-to-selection-btn'); 
-             clearSelectionBtn = document.getElementById('clear-selection-btn'); 
              mapZoomSlider = document.getElementById('map-zoom-slider');
              jumptoBtn = document.getElementById('jumpto-btn');
              placePoiTypeSelect = document.getElementById('place-poi-type');
@@ -1586,10 +1706,12 @@
              editingPoiNameEl = document.getElementById('editing-poi-name');
              saveEditLocationBtn = document.getElementById('save-edit-location-btn');
              cancelEditLocationBtn = document.getElementById('cancel-edit-location-btn');
-             summaryPoiList = document.getElementById('summary-poi-list');
-             loadingSummaryPois = document.getElementById('loading-summary-pois');
              mapCenterCoordsEl = document.getElementById('map-center-coords'); 
              placementPreviewImageEl = document.getElementById('placement-preview-image'); 
+
+             // Refs Página Resumen
+             summaryPoiList = document.getElementById('summary-poi-list');
+             loadingSummaryPois = document.getElementById('loading-summary-pois');
 
              console.log("DOM element references obtained.");
 
@@ -1597,12 +1719,14 @@
              displayAppVersion(); 
              initializeModelSelection(); 
              
-             // --- CORRECCIÓN AQUÍ ---
-             // Llamar a la función que SÍ tiene el código
+             // Adjuntar listeners de Navegación
              setupNavigationListeners(); 
 
+             // Adjuntar listeners de Auth
+             if (googleLoginBtn) googleLoginBtn.addEventListener('click', handleGoogleLogin);
+             if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+
              // Adjuntar listeners de formularios y listas
-             // --- AJUSTE AQUÍ: Usar handleBackToAdmin para consistencia ---
              if (cancelPlacementBtn) cancelPlacementBtn.addEventListener('click', handleBackToAdmin); 
              if (backToSelectionBtn) backToSelectionBtn.addEventListener('click', cancelPlacement); 
              if (savePlacementBtn) savePlacementBtn.addEventListener('click', handleSavePlacement);
@@ -1669,3 +1793,4 @@
     </script>
 </body>
 </html>
+
