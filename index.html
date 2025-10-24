@@ -180,18 +180,17 @@
         #placed-pois-panel.minimized #placed-pois-list {
             display: none;
         }
+        /* Botón de Toggle CORREGIDO: Se mueve DENTRO de map-controls */
         #toggle-pois-btn {
-            position: absolute;
-            top: 5px;
-            left: -35px; /* Coloca el botón fuera del panel (a la izquierda) */
+            /* Estilo temporal: se aplica el estilo control-button */
             background-color: #607d8b;
             color: white;
-            padding: 5px;
-            border-radius: 4px 0 0 4px;
-            box-shadow: -2px 0 5px rgba(0,0,0,0.2);
-            font-size: 14px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 16px;
             cursor: pointer;
-            z-index: 402;
+            transition: background-color 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         /* FIN CORRECCIÓN MÓVIL */
 
@@ -245,6 +244,50 @@
              font-size: 0.9rem;
              color: #ccc;
              min-height: 20px;
+        }
+
+        /* Guía AR */
+        #ar-guide {
+             position: fixed;
+             top: 100px;
+             left: 50%;
+             transform: translateX(-50%);
+             background-color: rgba(0, 0, 0, 0.7);
+             color: white;
+             padding: 10px 15px;
+             border-radius: 8px;
+             font-size: 1.1rem;
+             font-weight: bold;
+             z-index: 9999;
+             text-align: center;
+             display: none;
+             border: 2px solid #FFC107;
+        }
+        
+        /* Control de Escala en AR */
+        #ar-scale-controls {
+            position: fixed;
+            bottom: 80px; /* Sobre ar-controls */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            width: 80%;
+            max-width: 400px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .scale-label-ar {
+             font-size: 0.8rem;
+             font-weight: normal;
+        }
+        .scale-value-ar {
+             font-weight: bold;
+             color: #4CAF50;
         }
 
 
@@ -423,8 +466,7 @@
         
          <!-- Panel de POIs Guardados (Derecha) -->
          <div id="placed-pois-panel" class="map-panel right-3">
-             <!-- Botón de Ocultar/Mostrar -->
-             <button id="toggle-pois-btn" class="absolute top-1 left-[-35px] bg-gray-700 text-white p-1 rounded-l-md text-xs shadow-md">Ocultar</button>
+             <!-- Botón de Ocultar/Mostrar (Ahora se maneja en map-controls) -->
              
               <h3 class="text-lg font-semibold mb-2">Contenido en el Mapa</h3>
               <p class="text-xs text-amber-700 mb-2">Datos guardados en Firebase.</p>
@@ -448,6 +490,8 @@
          </div>
 
         <div id="map-controls">
+             <!-- BOTÓN TOGGLE RE-UBICADO AQUÍ -->
+            <button id="toggle-pois-btn" class="control-button bg-gray-700 hover:bg-gray-800">Ocultar POIs</button>
             <button id="back-to-admin-btn" class="control-button bg-gray-500 hover:bg-gray-600">Volver al Panel</button>
             <button id="goto-summary-btn" class="control-button bg-purple-500 hover:bg-purple-600">Ver Resumen</button> 
          </div>
@@ -489,6 +533,18 @@
         </div>
 
         <div id="ar-scene-container"></div>
+        
+        <!-- Guía AR (NUEVO) -->
+        <div id="ar-guide" style="display:none;">
+            Modelo más cercano: <span id="guide-name"></span><br>
+            Distancia: <span id="guide-distance">--m</span> - Dirección: <span id="guide-bearing">--</span>
+        </div>
+        
+        <!-- Control de Escala en AR (NUEVO) -->
+        <div id="ar-scale-controls">
+             <label for="ar-scale-slider" class="scale-label-ar">Ajuste Fino de Escala: <span id="ar-scale-value-display" class="scale-value-ar">1.0x</span></label>
+             <input id="ar-scale-slider" type="range" min="0.1" max="5.0" value="1.0" step="0.05" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+        </div>
 
         <div class="ar-info-panel">
             <div><strong>GPS:</strong> <span id="gps-status">Buscando...</span></div>
@@ -535,8 +591,8 @@
          } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Versión de la App ---
-        // IMPORTANTE: Incrementar esta versión (ej. 1.37 -> 1.38) con CADA cambio, corrección o ajuste.
-        const APP_VERSION = '1.38'; // Final fix for dynamic AR resource loading (assets + progress bar)
+        // IMPORTANTE: Incrementar esta versión (ej. 1.40 -> 1.41) con CADA cambio, corrección o ajuste.
+        const APP_VERSION = '1.41'; // Fija posición del modelo AR (remueve look-at) y ajusta la lógica de guía AR.
         // LocalStorage Key
         const LOCALSTORAGE_KEY = 'arAdminModelSelection';
 
@@ -584,11 +640,17 @@
         // Variables AR
         let arScene = null;
         let gpsWatchId = null; 
+        let lastKnownGps = { latitude: 0, longitude: 0, accuracy: 9999, heading: 0 }; // NUEVO: Para guardar la última posición y dirección
+        let arBaseScale = 1.0; // NUEVO: Escala base definida en el formulario (1.0 = 1 metro)
+        let arFineScaleMultiplier = 1.0; // NUEVO: Multiplicador del slider de ajuste fino
         // Referencia a la barra de progreso
         let progressBar, progressBarContainer, loadingAssetStatus;
-        let totalARAssetsToLoad = 0; // Contador de recursos (modelos, videos, audios) para la barra de progreso
-        let loadedARAssetsCount = 0; // Contador de recursos cargados
-        const ASSETS_LOAD_STEP = 50; // Porcentaje de la barra dedicado a la carga de assets
+        let totalARAssetsToLoad = 0; 
+        let loadedARAssetsCount = 0; 
+        const ASSETS_LOAD_STEP = 50; 
+        // Referencia a la guía AR
+        let arGuide, guideName, guideDistance, guideBearing;
+        let arScaleSlider, arScaleValueDisplay;
 
 
         // --- Referencias a Elementos DOM (se asignarán en DOMContentLoaded) ---
@@ -608,8 +670,52 @@
         let togglePoisBtn;
 
 
-        // --- Funciones ---
+        // --- Funciones Matemáticas ---
+        function toRad(degrees) { return degrees * (Math.PI / 180); }
+        function toDeg(radians) { return radians * (180 / Math.PI); }
+        
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Radio de la Tierra en metros
+            const φ1 = toRad(lat1);
+            const φ2 = toRad(lat2);
+            const Δφ = toRad(lat2 - lat1);
+            const Δλ = toRad(lon2 - lon1);
 
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                    Math.cos(φ1) * Math.cos(φ2) *
+                    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c; // Distancia en metros
+        }
+
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const φ1 = toRad(lat1);
+            const φ2 = toRad(lat2);
+            const λ1 = toRad(lon1);
+            const λ2 = toRad(lon2);
+            
+            const y = Math.sin(λ2 - λ1) * Math.cos(φ2);
+            const x = Math.cos(φ1) * Math.sin(φ2) -
+                    Math.sin(φ1) * Math.cos(φ2) * Math.cos(λ2 - λ1);
+
+            let bearing = toDeg(Math.atan2(y, x));
+            return (bearing + 360) % 360; // De 0 a 360 grados
+        }
+        
+        function getDirectionArrow(bearingDiff) {
+            if (bearingDiff >= -20 && bearingDiff <= 20) return "↑ (Recto)";
+            if (bearingDiff > 20 && bearingDiff <= 70) return "↗ (Semi-derecha)";
+            if (bearingDiff > 70 && bearingDiff <= 110) return "→ (Derecha)";
+            if (bearingDiff > 110 && bearingDiff <= 160) return "↘ (Atrás-derecha)";
+            if (bearingDiff > 160 || bearingDiff < -160) return "↓ (Atrás)";
+            if (bearingDiff < -110 && bearingDiff >= -160) return "↙ (Atrás-izquierda)";
+            if (bearingDiff < -70 && bearingDiff >= -110) return "← (Izquierda)";
+            if (bearingDiff < -20 && bearingDiff >= -70) return "↖ (Semi-izquierda)";
+            return "--";
+        }
+        // --- FIN Funciones Matemáticas ---
+        
         function showMessage(msg, duration = 3000) {
             // ... (no changes) ...
             if (!messageBox) { 
@@ -735,7 +841,7 @@
             currentEditingMarker = null;
             // Asegurar que el panel de POIs esté visible la próxima vez que se abra
             if (placedPoisPanel) placedPoisPanel.classList.remove('minimized');
-            if (togglePoisBtn) togglePoisBtn.textContent = 'Ocultar';
+            if (togglePoisBtn) togglePoisBtn.textContent = 'Ocultar POIs';
         }
 
         // --- Persistence Functions (no changes) ---
@@ -1193,7 +1299,7 @@
         function handleTogglePoisPanel() {
              if (placedPoisPanel && togglePoisBtn) {
                  const isMinimized = placedPoisPanel.classList.toggle('minimized');
-                 togglePoisBtn.textContent = isMinimized ? 'Mostrar' : 'Ocultar';
+                 togglePoisBtn.textContent = isMinimized ? 'Mostrar POIs' : 'Ocultar POIs';
              }
         }
         
@@ -1736,6 +1842,12 @@
 
             arLoadingScreen.classList.add('active');
             updateARProgressBar('start');
+            
+            // Reiniciar el multiplicador de escala al valor por defecto al iniciar AR
+            arFineScaleMultiplier = 1.0;
+            if (arScaleSlider) arScaleSlider.value = arFineScaleMultiplier;
+            if (arScaleValueDisplay) arScaleValueDisplay.textContent = `${arFineScaleMultiplier.toFixed(2)}x`;
+
 
             // 1. Verificar Permisos (Cámara y GPS)
             try {
@@ -1748,7 +1860,7 @@
                 // Pide permiso de GPS
                 await new Promise((resolve, reject) => {
                     navigator.geolocation.getCurrentPosition(
-                        resolve,
+                        (pos) => { lastKnownGps = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy, heading: pos.coords.heading || 0 }; resolve(); },
                         (err) => reject(new Error(err.message || "GPS permission denied.")),
                         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                     );
@@ -1890,17 +2002,20 @@
             // 2. Inyectar los POIs activos y sus recursos
             activePois.forEach((poi) => {
                 const entityId = `entity-${poi.id}`;
-                const scale = poi.scale || 1.0;
+                // USAR LA ESCALA DIRECTAMENTE EN METROS (1 unidad de escala = 1 metro)
+                const scale = poi.scale || 1.0; 
                 const groundHeight = poi.groundHeight || 0;
                 
                 const entity = document.createElement('a-entity');
                 entity.setAttribute('id', entityId);
+                entity.setAttribute('class', 'poi-entity'); // Clase para ajustes de escala
                 entity.setAttribute('data-poi-id', poi.id);
                 entity.setAttribute('data-name', poi.name);
-                entity.setAttribute('look-at', '[gps-camera]');
+                // CRÍTICO: REMOVIDO look-at="[gps-camera]" para que el modelo se quede fijo y no persiga
                 entity.setAttribute('gps-entity-place', `latitude: ${poi.lat}; longitude: ${poi.lon};`);
                 entity.setAttribute('position', `0 ${groundHeight} 0`);
-                entity.setAttribute('scale', `${scale} ${scale} ${scale}`);
+                // Corrección: Escala se usa directamente como multiplicador de la unidad base (1 metro)
+                entity.setAttribute('scale', `${scale} ${scale} ${scale}`); 
                 
                 // --- Recursos del POI ---
                 
@@ -1989,6 +2104,24 @@
             console.log("AR Scene structure created with POIs.");
             // No iniciamos nada más, la carga de assets y el GPS se manejan en startARFlow.
         }
+        
+        // Función que aplica la escala dinámica a todos los POIs
+        function applyFineScaleAdjustment() {
+            arFineScaleMultiplier = parseFloat(arScaleSlider.value);
+            arScaleValueDisplay.textContent = `${arFineScaleMultiplier.toFixed(2)}x`;
+            
+            const poiEntities = arScene.querySelectorAll('.poi-entity');
+            
+            poiEntities.forEach(entity => {
+                // Obtenemos la escala base guardada en Firebase (1.0 = 1 metro)
+                const baseScale = parseFloat(poiDataMap.get(entity.dataset.poiId)?.scale || 1.0);
+                
+                // Aplicamos el ajuste fino (multiplicador) a la escala base
+                const finalScale = baseScale * arFineScaleMultiplier;
+                
+                entity.setAttribute('scale', `${finalScale} ${finalScale} ${finalScale}`);
+            });
+        }
 
         // --- Stop AR (no changes) ---
         function stopAR() {
@@ -2033,14 +2166,68 @@
             const gpsAccuracyEl = document.getElementById('gps-accuracy');
             if (gpsStatusEl) gpsStatusEl.textContent = "Buscando...";
             if (gpsAccuracyEl) gpsAccuracyEl.textContent = "--";
+            
+            if (arGuide) arGuide.style.display = 'none'; // Ocultar guía al salir
+            if (arScaleSlider) arScaleSlider.value = 1.0; // Reset slider
         }
 
-        // --- GPS/AR Feedback (no changes) ---
+        // --- GPS/AR Feedback (NUEVO: Lógica de Guía) ---
+        function updateARGuide() {
+            // Encuentra el POI más cercano y activo
+            let closestPoi = null;
+            let minDistance = Infinity;
+
+            const now = new Date();
+            const activePois = allPoisData.filter(poi => {
+                const startDate = poi.startDate ? new Date(poi.startDate + "T00:00:00") : null;
+                const endDate = poi.endDate ? new Date(poi.endDate + "T23:59:59") : null;
+                let isActive = true;
+                if (startDate && endDate) { isActive = now >= startDate && now <= endDate; }
+                else if (startDate) { isActive = now >= startDate; }
+                return isActive;
+            });
+
+            activePois.forEach(poi => {
+                const distance = calculateDistance(lastKnownGps.latitude, lastKnownGps.longitude, poi.lat, poi.lon);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestPoi = poi;
+                }
+            });
+
+            if (closestPoi && lastKnownGps.accuracy < 100) { // Solo mostrar guía si la precisión es aceptable
+                const targetBearing = calculateBearing(lastKnownGps.latitude, lastKnownGps.longitude, closestPoi.lat, closestPoi.lon);
+                
+                // La diferencia de rumbo indica qué tan a la izquierda/derecha está el modelo
+                // lastKnownGps.heading viene del sensor de orientación (giroscopio), 0=Norte.
+                // Usamos 0 si heading es nulo (no todos los dispositivos lo proporcionan)
+                const heading = lastKnownGps.heading || 0;
+                const bearingDiff = (targetBearing - heading + 360) % 360;
+                let normalizedDiff = bearingDiff > 180 ? bearingDiff - 360 : bearingDiff;
+                
+                guideName.textContent = closestPoi.name;
+                guideDistance.textContent = `${minDistance.toFixed(1)}m`;
+                guideBearing.textContent = getDirectionArrow(normalizedDiff);
+                arGuide.style.display = 'block';
+
+            } else {
+                 arGuide.style.display = 'none';
+            }
+        }
+        
         function onGPSUpdate(event) {
              // ... (código onGPSUpdate sin cambios) ...
              const pos = event.detail.position;
             const accuracy = pos.coords.accuracy.toFixed(2);
-            // console.log(`GPS Update: Lat: ${pos.coords.latitude}, Lon: ${pos.coords.longitude}, Acc: ${accuracy}m`);
+            
+            // ACTUALIZAR LA POSICIÓN GLOBAL CON HEADINGS
+            lastKnownGps = { 
+                latitude: pos.coords.latitude, 
+                longitude: pos.coords.longitude, 
+                accuracy: pos.coords.accuracy, 
+                heading: pos.coords.heading || lastKnownGps.heading 
+            };
+            
             const gpsStatusEl = document.getElementById('gps-status');
             const gpsAccuracyEl = document.getElementById('gps-accuracy');
             
@@ -2055,6 +2242,9 @@
                      gpsAccuracyEl.style.color = 'lime';
                  }
             }
+            
+            // Ejecutar la guía AR
+            updateARGuide();
         }
         
         function onGPSError(event) {
@@ -2088,6 +2278,15 @@
                     if (camera && camera.components['gps-camera']) {
                         camera.components['gps-camera'].onGpsUpdate(pos);
                     }
+                    
+                    // Actualizar la posición global y la guía
+                    lastKnownGps = { 
+                        latitude: pos.coords.latitude, 
+                        longitude: pos.coords.longitude, 
+                        accuracy: pos.coords.accuracy, 
+                        heading: pos.coords.heading || lastKnownGps.heading 
+                    };
+                    updateARGuide();
                 },
                 (err) => { 
                      console.error("Geolocation watch error:", err); 
@@ -2140,6 +2339,15 @@
             progressBarContainer = document.getElementById('progress-bar-container');
             loadingAssetStatus = document.getElementById('loading-asset-status'); // NUEVO
             versionDisplay = document.getElementById('version-display');
+            
+            // NUEVO: Referencias a la Guía AR
+            arGuide = document.getElementById('ar-guide');
+            guideName = document.getElementById('guide-name');
+            guideDistance = document.getElementById('guide-distance');
+            guideBearing = document.getElementById('guide-bearing');
+            // NUEVO: Referencias al Slider de Escala AR
+            arScaleSlider = document.getElementById('ar-scale-slider');
+            arScaleValueDisplay = document.getElementById('ar-scale-value-display');
             
             listContainer = document.getElementById('poi-list-container');
             loadingPois = document.getElementById('loading-pois');
@@ -2202,6 +2410,9 @@
             if (saveEditLocationBtn) saveEditLocationBtn.addEventListener('click', handleSaveEditLocation);
             if (cancelEditLocationBtn) cancelEditLocationBtn.addEventListener('click', cancelEditLocation);
             if (clearSelectionBtn) clearSelectionBtn.addEventListener('click', clearSavedSelection);
+            
+            // Listener para el ajuste de escala AR en tiempo real
+            if (arScaleSlider) arScaleSlider.addEventListener('input', applyFineScaleAdjustment);
 
             if (listContainer) { // Listener for ADMIN page delete
                 listContainer.addEventListener('click', async (e) => {
