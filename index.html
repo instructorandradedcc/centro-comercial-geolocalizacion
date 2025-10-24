@@ -129,7 +129,7 @@
         #placed-pois-panel.minimized h3,
         #placed-pois-panel.minimized .text-xs,
         #placed-pois-panel.minimized #placed-pois-list { display: none; }
-        #toggle-pois-btn { background-color: #607d8b; } /* Style may need adjustment */
+        #toggle-pois-btn-map { background-color: #607d8b; } /* Adjusted ID for prototype */
 
         #placement-preview-image {
             max-width: 100px; max-height: 100px;
@@ -364,7 +364,8 @@
             onAuthStateChanged,
             GoogleAuthProvider,
             signInWithPopup,
-            signOut
+            signOut,
+            signInAnonymously // Importar signInAnonymously si se usa como fallback
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import {
             getFirestore,
@@ -379,9 +380,38 @@
          } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Configuración ---
-        const APP_VERSION = '1.45-Proto'; // Versión específica del prototipo
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{ "projectId": "default-project-id", "appId": "default-app-id" }');
+        const APP_VERSION = '1.47-Proto-ManualConfig-Complete'; // Versión específica del prototipo
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'manual-app-id'; // Usar 'manual-app-id' si __app_id no está
+
+        // --- CONFIGURACIÓN MANUAL DE FIREBASE ---
+        // INTENTA LEER LA CONFIGURACIÓN DEL ENTORNO (__firebase_config)
+        // SI NO EXISTE, USA LOS VALORES MANUALES DE ABAJO.
+        // !! REEMPLAZA LOS VALORES "TU_..." CON LOS DE TU PROYECTO !!
+        let firebaseConfig;
+        if (typeof __firebase_config !== 'undefined') {
+            try {
+                firebaseConfig = JSON.parse(__firebase_config);
+                console.log("Usando configuración de Firebase del entorno (__firebase_config).");
+            } catch (e) {
+                console.error("Error al parsear __firebase_config. Usando configuración manual.", e);
+                firebaseConfig = null; // Marcar como inválido para usar el bloque manual
+            }
+        } else {
+             firebaseConfig = null; // Marcar como nulo para usar el bloque manual
+        }
+
+        if (!firebaseConfig) {
+            console.warn("Variable __firebase_config no encontrada o inválida. Usando configuración manual. ¡REEMPLAZA LOS VALORES 'TU_...'!");
+            firebaseConfig = {
+                apiKey: "TU_API_KEY", // Reemplaza esto
+                authDomain: "TU_AUTH_DOMAIN", // Reemplaza esto (ej: tu-proyecto.firebaseapp.com)
+                projectId: "TU_PROJECT_ID", // Reemplaza esto
+                storageBucket: "TU_STORAGE_BUCKET", // Reemplaza esto (ej: tu-proyecto.appspot.com)
+                messagingSenderId: "TU_MESSAGING_SENDER_ID", // Reemplaza esto
+                appId: "TU_APP_ID" // Reemplaza esto (formato: 1:xxxx:web:xxxx)
+            };
+        }
+        // --- FIN CONFIGURACIÓN MANUAL ---
 
         // --- Variables Globales ---
         let db, auth, userId, poiCollectionRef;
@@ -398,7 +428,7 @@
 
         // Elementos UI (asignados en DOMContentLoaded)
         let pages = {};
-        let messageBox, permissionModal, arLoadingScreen, loadingStatusText, progressBar, progressBarContainer, loadingAssetStatus, versionDisplay, arGuide, guideName, guideDistance, guideBearing, arScaleSlider, arScaleValueDisplay, saveArScaleBtn, listContainer, loadingPois, gotoMapButton, googleLoginBtn, logoutBtn, userInfo, userEmail, placedPoisList, summaryPoiList, loadingSummaryPois, mapCenterCoordsEl;
+        let messageBox, permissionModal, arLoadingScreen, loadingStatusText, progressBar, progressBarContainer, loadingAssetStatus, versionDisplay, arGuide, guideName, guideDistance, guideBearing, arScaleSlider, arScaleValueDisplay, saveArScaleBtn, listContainer, loadingPois, gotoMapButton, googleLoginBtn, logoutBtn, userInfo, userEmail, placedPoisList, summaryPoiList, loadingSummaryPois, mapCenterCoordsEl, jumptoBtn; // Añadido jumptoBtn
 
         // --- Funciones Utilitarias ---
         function showMessage(msg, duration = 3000) {
@@ -433,12 +463,15 @@
         // --- Lógica Firebase ---
         async function initializeFirebase() {
              console.log("Initializing Firebase...");
-             // Validar config básica
-            if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.projectId === 'default-project-id') {
-                const errorMsg = "Error fatal: Configuración de Firebase inválida.";
+
+             // Validar config básica - MODIFICADO para permitir config manual
+            if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.projectId.startsWith("TU_")) {
+                const errorMsg = "Error fatal: Configuración de Firebase inválida. Reemplaza los valores 'TU_...' en el código.";
                 console.error(errorMsg, firebaseConfig);
-                showMessage(errorMsg, 10000);
-                return;
+                showMessage(errorMsg, 15000); // Mensaje más largo
+                // Bloquear UI o mostrar mensaje permanente
+                if(googleLoginBtn) googleLoginBtn.disabled = true;
+                return; // Detener inicialización
             }
 
             try {
@@ -451,25 +484,25 @@
                     if (user) {
                         userId = user.uid;
                         console.log('Firebase User Authenticated:', userId);
-                        // Actualizar UI - ASUMIENDO IDs SIMILARES A v1.44
+                        // Actualizar UI
                         if (userEmail) userEmail.textContent = user.email || userId;
                         if (userInfo) userInfo.classList.remove('hidden');
                         if (logoutBtn) logoutBtn.classList.remove('hidden');
-                        if (googleLoginBtn) googleLoginBtn.classList.add('hidden'); // Ocultar botón de login
+                        if (googleLoginBtn) googleLoginBtn.classList.add('hidden');
 
                         // Configurar referencia de colección
-                        const identifier = (appId !== 'default-app-id') ? appId : firebaseConfig.projectId;
-                        const collectionPath = `/artifacts/${identifier}/users/${userId}/pois`;
+                        // Usar appId manual si no se detecta el del entorno
+                        const currentAppId = (typeof __app_id !== 'undefined' && __app_id !== 'default-app-id') ? __app_id : 'manual-app-id-for-testing'; // Usa un ID claro si es manual
+                        const collectionPath = `/artifacts/${currentAppId}/users/${userId}/pois`;
                         poiCollectionRef = collection(db, collectionPath);
                         console.log('POI Collection Path:', collectionPath);
 
                         firebaseReady = true;
-                        if (gotoMapButton) gotoMapButton.disabled = false; // Habilitar botón si existe
+                        if (gotoMapButton) gotoMapButton.disabled = false;
 
                         showMessage(`Bienvenido, ${user.displayName || user.email}`, 2000);
-                        loadPoisFromFirebase(); // Cargar datos iniciales
+                        loadPoisFromFirebase();
 
-                        // Navegar a admin si estaba en login
                         if (pages.login?.classList.contains('active')) {
                             navigateTo('admin');
                         }
@@ -480,20 +513,20 @@
                         firebaseReady = false;
                         console.log('Firebase User signed out.');
                         if (gotoMapButton) gotoMapButton.disabled = true;
-                        // Actualizar UI - ASUMIENDO IDs SIMILARES A v1.44
+                        // Actualizar UI
                         if (userInfo) userInfo.classList.add('hidden');
                         if (logoutBtn) logoutBtn.classList.add('hidden');
-                        if (googleLoginBtn) googleLoginBtn.classList.remove('hidden'); // Mostrar botón de login
+                        if (googleLoginBtn) googleLoginBtn.classList.remove('hidden');
 
-                        allPoisData = []; // Limpiar datos locales
-                        updatePoiLists(); // Limpiar listas UI
-                        navigateTo('login'); // Forzar página de login
+                        allPoisData = [];
+                        updatePoiLists();
+                        navigateTo('login');
                     }
                 });
             } catch (initError) {
                 console.error("Firebase Initialization Error:", initError);
                 firebaseReady = false;
-                const errorMsg = `Error al inicializar Firebase: ${initError.message}.`;
+                const errorMsg = `Error al inicializar Firebase: ${initError.message}. Verifica tu configuración manual.`;
                 showMessage(errorMsg, 10000);
             }
         }
@@ -508,7 +541,13 @@
                 await signInWithPopup(auth, provider);
                 // onAuthStateChanged se encargará del resto
             } catch (error) {
-                showMessage("Error al iniciar sesión: " + (error.message || "Intenta de nuevo."), 5000);
+                console.error("Google Login Error:", error);
+                 // Mostrar mensaje más específico si el popup fue cerrado
+                 if (error.code === 'auth/popup-closed-by-user') {
+                    showMessage("Inicio de sesión cancelado.", 3000);
+                 } else {
+                    showMessage("Error al iniciar sesión: " + (error.message || "Intenta de nuevo."), 5000);
+                 }
             }
         }
 
@@ -573,7 +612,8 @@
 
          function populateMapPoiList() {
             if (placedPoisList) {
-                const listEl = placedPoisList.querySelector('p') ? placedPoisList : document.getElementById('placed-pois-list'); // Handle potential placeholder p
+                // Asegurarse de que listEl es el contenedor correcto
+                 const listEl = document.getElementById('placed-pois-list');
                 if (!listEl) return;
 
                 if (allPoisData.length === 0) {
@@ -590,7 +630,8 @@
 
         function populateSummaryList() {
              if (summaryPoiList) {
-                 const listEl = summaryPoiList.querySelector('p') ? summaryPoiList : document.getElementById('summary-poi-list'); // Handle placeholder p
+                 // Asegurarse de que listEl es el contenedor correcto
+                 const listEl = document.getElementById('summary-poi-list');
                  if (!listEl) return;
 
                  if (!firebaseReady) {
@@ -613,7 +654,9 @@
                              </div>
                          </div>`).join('');
                  }
-                 if (loadingSummaryPois) loadingSummaryPois.style.display = 'none';
+                 // Ocultar el P de carga si existe
+                 const loadingSummaryEl = document.getElementById('loading-summary-pois');
+                 if (loadingSummaryEl) loadingSummaryEl.style.display = 'none';
              }
          }
 
@@ -626,7 +669,10 @@
                  return;
              }
              const mapContainer = document.getElementById('map-canvas');
-             if (!mapContainer) return;
+             if (!mapContainer) {
+                console.error("Map container #map-canvas not found.");
+                return;
+             }
 
              map = L.map(mapContainer, { zoomControl: false }).setView([4.0835, -76.1915], 15); // Tuluá
              L.tileLayer('https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
@@ -656,18 +702,28 @@
              poiMarkers = {};
              // Añadir marcadores para cada POI
              allPoisData.forEach(poi => {
-                 if (poi.lat && poi.lon) {
-                     const marker = L.marker([poi.lat, poi.lon]).addTo(map)
-                         .bindPopup(`<b>${poi.name || 'POI'}</b><br>Escala: ${poi.arScaleMultiplier || 1.0}x`);
-                     poiMarkers[poi.id] = marker;
+                 if (poi.lat != null && poi.lon != null) { // Check for null or undefined explicitly
+                     try {
+                         const marker = L.marker([poi.lat, poi.lon]).addTo(map)
+                             .bindPopup(`<b>${poi.name || 'POI'}</b><br>Escala: ${poi.arScaleMultiplier || 1.0}x`);
+                         poiMarkers[poi.id] = marker;
+                     } catch (e) {
+                         console.error(`Error adding marker for POI ${poi.id} (${poi.name}) at [${poi.lat}, ${poi.lon}]:`, e);
+                     }
+                 } else {
+                     console.warn(`Skipping marker for POI ${poi.id} (${poi.name}) due to missing coordinates.`);
                  }
              });
+             console.log(`Updated ${Object.keys(poiMarkers).length} map markers.`);
         }
 
         // --- Lógica AR (A-Frame, AR.js) ---
         async function startARFlow() {
              console.log("Starting AR Flow...");
-             if (!arLoadingScreen || !permissionModal) return;
+             if (!arLoadingScreen || !permissionModal) {
+                console.error("AR UI elements missing.");
+                return;
+             }
 
              arLoadingScreen.classList.add('active');
              // Reset UI
@@ -678,9 +734,14 @@
 
              try {
                  // Pedir permisos
+                 console.log("Requesting camera permission...");
                  const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                  stream.getTracks().forEach(track => track.stop());
+                 console.log("Camera permission granted.");
+
+                 console.log("Requesting high accuracy GPS permission...");
                  await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 60000, maximumAge: 0 }));
+                 console.log("GPS permission granted.");
 
                  initializeARScene(); // Inicializar A-Frame
 
@@ -697,12 +758,17 @@
 
         function initializeARScene() {
              const arContainer = document.getElementById('ar-scene-container');
-             if (!arContainer) return;
+             if (!arContainer) {
+                 console.error("AR container #ar-scene-container not found!");
+                 return;
+             }
              arContainer.innerHTML = ''; // Limpiar
 
              const activePois = filterActivePois();
              if (activePois.length === 0) {
                  showMessage("No hay POIs activos para mostrar en AR hoy.", 4000);
+                 stopAR(); // Ensure AR view is properly cleaned up if nothing to show
+                 navigateTo('summary'); // Go back to summary
                  return; // No crear escena si no hay nada que mostrar
              }
 
@@ -710,7 +776,7 @@
              let assetsHTML = '<a-assets timeout="30000">';
              activePois.forEach(poi => {
                  if (poi.modelUrl) { // Asumiendo que modelUrl existe para modelos
-                     assetsHTML += `<a-asset-item id="model-${poi.id}" src="${poi.modelUrl}"></a-asset-item>`;
+                     assetsHTML += `<a-asset-item id="model-${poi.id}" src="${poi.modelUrl}" crossOrigin="anonymous"></a-asset-item>`; // Added crossOrigin
                  }
                  // Añadir assets para videos o sonidos si es necesario
              });
@@ -718,15 +784,17 @@
 
              let entitiesHTML = '';
              activePois.forEach(poi => {
-                 const scale = poi.arScaleMultiplier || 1.0;
-                 const height = poi.height || 0; // Usar 'height' si existe, si no 0
+                 const scaleMultiplier = poi.arScaleMultiplier || 1.0; // Use saved multiplier or default
+                 // NOTE: Base scale (poi.scale) is NOT used here as AR.js handles scale differently
+                 const height = poi.height || 0; // Use 'height' if exists, otherwise 0
+
                  entitiesHTML += `
                      <a-entity
                          class="poi-entity"
                          data-poi-id="${poi.id}"
                          gps-entity-place="latitude: ${poi.lat}; longitude: ${poi.lon};"
                          gltf-model="#model-${poi.id}"
-                         scale="${scale} ${scale} ${scale}"
+                         scale="${scaleMultiplier} ${scaleMultiplier} ${scaleMultiplier}"
                          position="0 ${height} 0">
                      </a-entity>`;
              });
@@ -748,11 +816,15 @@
              // Adjuntar listeners de GPS a la cámara
              const camera = document.getElementById('ar-camera');
              if (camera) {
-                 camera.removeEventListener('gps-camera-update-position', onGPSUpdate);
+                 console.log("Attaching GPS listeners to camera...");
+                 camera.removeEventListener('gps-camera-update-position', onGPSUpdate); // Prevent duplicates
                  camera.removeEventListener('gps-camera-error', onGPSError);
                  camera.addEventListener('gps-camera-update-position', onGPSUpdate);
                  camera.addEventListener('gps-camera-error', onGPSError);
+             } else {
+                 console.error("AR camera not found after scene creation!");
              }
+             console.log("AR Scene initialized.");
         }
 
         function stopAR() {
@@ -762,7 +834,10 @@
                      camera.removeEventListener('gps-camera-update-position', onGPSUpdate);
                      camera.removeEventListener('gps-camera-error', onGPSError);
                  }
-                arScene.pause();
+                try { // Wrap in try-catch as pause() might fail if scene is already removed
+                   arScene.pause();
+                } catch(e) { console.warn("Error pausing AR scene:", e); }
+
                 const container = document.getElementById('ar-scene-container');
                 if(container) container.innerHTML = ''; // Limpiar escena
                 arScene = null;
@@ -784,25 +859,74 @@
              return allPoisData.filter(poi => {
                  if (!poi.lat || !poi.lon) return false;
                  // Lógica simple de activación, se puede expandir con fechas
+                 // Aquí podrías añadir comprobación de poi.startDate y poi.endDate si los usas
                  return true; // Asumiendo todos activos por ahora
              });
          }
+        // --- Math Functions ---
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return Infinity;
+            const R = 6371e3; // meters
+            const phi1 = lat1 * Math.PI / 180;
+            const phi2 = lat2 * Math.PI / 180;
+            const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+            const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+                      Math.cos(phi1) * Math.cos(phi2) *
+                      Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c; // in meters
+        }
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return 0;
+             const phi1 = lat1 * Math.PI / 180;
+             const phi2 = lat2 * Math.PI / 180;
+             const lambda1 = lon1 * Math.PI / 180;
+             const lambda2 = lon2 * Math.PI / 180;
+             const y = Math.sin(lambda2 - lambda1) * Math.cos(phi2);
+             const x = Math.cos(phi1) * Math.sin(phi2) -
+                       Math.sin(phi1) * Math.cos(phi2) * Math.cos(lambda2 - lambda1);
+             const theta = Math.atan2(y, x);
+             return (theta * 180 / Math.PI + 360) % 360; // in degrees
+        }
+         function getDirectionArrow(bearingDiff) {
+            let normalizedDiff = bearingDiff % 360;
+            if (normalizedDiff > 180) normalizedDiff -= 360;
+            if (normalizedDiff <= -180) normalizedDiff += 360;
+
+            if (normalizedDiff >= -22.5 && normalizedDiff <= 22.5) return "↑"; // Forward
+            if (normalizedDiff > 22.5 && normalizedDiff <= 67.5) return "↗"; // Forward-Right
+            if (normalizedDiff > 67.5 && normalizedDiff <= 112.5) return "→"; // Right
+            if (normalizedDiff > 112.5 && normalizedDiff <= 157.5) return "↘"; // Back-Right
+            if (normalizedDiff > 157.5 || normalizedDiff < -157.5) return "↓"; // Back
+            if (normalizedDiff < -112.5 && normalizedDiff >= -157.5) return "↙"; // Back-Left
+            if (normalizedDiff < -67.5 && normalizedDiff >= -112.5) return "←"; // Left
+            if (normalizedDiff < -22.5 && normalizedDiff >= -67.5) return "↖"; // Forward-Left
+            return "?";
+        }
+
 
         function onGPSUpdate(event) {
              if (!arScene) return;
-             const pos = event.detail.position.coords;
+             const pos = event.detail?.position?.coords; // Safely access coords
              if (!pos) return;
              lastKnownGps = { latitude: pos.latitude, longitude: pos.longitude, accuracy: pos.accuracy, heading: pos.heading };
-             document.getElementById('gps-status').textContent = 'OK';
-             document.getElementById('gps-accuracy').textContent = pos.accuracy?.toFixed(1) ?? '--';
+             const gpsStatusEl = document.getElementById('gps-status');
+             const gpsAccuracyEl = document.getElementById('gps-accuracy');
+             if(gpsStatusEl) gpsStatusEl.textContent = 'OK';
+             if(gpsAccuracyEl) gpsAccuracyEl.textContent = pos.accuracy?.toFixed(1) ?? '--';
              updateARGuide(); // Actualizar guía y botón de guardar escala
         }
 
         function onGPSError(event) {
              if (!arScene) return;
              console.error("GPS Error:", event.detail);
-             document.getElementById('gps-status').textContent = 'Error';
-             document.getElementById('gps-accuracy').textContent = 'N/A';
+             const gpsStatusEl = document.getElementById('gps-status');
+             const gpsAccuracyEl = document.getElementById('gps-accuracy');
+             if(gpsStatusEl) gpsStatusEl.textContent = 'Error';
+             if(gpsAccuracyEl) gpsAccuracyEl.textContent = 'N/A';
              showMessage("Error de GPS: " + (event.detail?.message || "Desconocido"), 4000);
              closestPoiIdForScaling = null;
              if(saveArScaleBtn) saveArScaleBtn.disabled = true;
@@ -851,12 +975,11 @@
              arFineScaleMultiplier = parseFloat(arScaleSlider.value);
              if (arScaleValueDisplay) arScaleValueDisplay.textContent = `${arFineScaleMultiplier.toFixed(2)}x`;
              arScene.querySelectorAll('.poi-entity').forEach(entity => {
-                 // Aquí necesitaríamos recalcular la escala base vs el multiplicador
-                 // Por ahora, aplica directamente el multiplicador a la escala actual
-                 const currentScale = entity.getAttribute('scale');
-                 // Esta lógica es simple y puede derivar si se aplica múltiples veces
-                 // Idealmente, se guardaría la escala base y se aplicaría base * multiplier
-                 entity.setAttribute('scale', `${arFineScaleMultiplier} ${arFineScaleMultiplier} ${arFineScaleMultiplier}`);
+                const poiId = entity.dataset.poiId;
+                 const poiData = allPoisData.find(p => p.id === poiId); // Find corresponding data
+                 // Apply scale based on type (simple multiplier for now)
+                 // A more robust approach would involve base scale stored in poiData
+                entity.setAttribute('scale', `${arFineScaleMultiplier} ${arFineScaleMultiplier} ${arFineScaleMultiplier}`);
              });
              if(saveArScaleBtn) saveArScaleBtn.disabled = !closestPoiIdForScaling; // Habilitar/deshabilitar guardar
          }
@@ -912,6 +1035,7 @@
              summaryPoiList = document.getElementById('summary-poi-list'); // Lista en resumen
              loadingSummaryPois = document.getElementById('loading-summary-pois'); // Loading resumen
              mapCenterCoordsEl = document.getElementById('map-center-coords'); // Coords en mapa
+             jumptoBtn = document.getElementById('jumpto-btn'); // Botón Jump To
 
              // Asignar listeners de navegación principales (ajustar IDs si es necesario)
              document.getElementById('goto-map-btn-admin')?.addEventListener('click', () => navigateTo('map'));
@@ -931,7 +1055,15 @@
              if (placedPoisList) placedPoisList.addEventListener('click', handleDeleteMapPoi); // Listener delegado para borrar en mapa
              if (arScaleSlider) arScaleSlider.addEventListener('input', applyFineScaleAdjustment);
              if (saveArScaleBtn) saveArScaleBtn.addEventListener('click', handleSaveARScale);
-             // Añadir otros listeners necesarios para el mapa (zoom, jump, etc.)
+             // Añadir otros listeners necesarios para el mapa (zoom, jump, toggle)
+             if (jumptoBtn) jumptoBtn.addEventListener('click', jumpToCoords);
+             // Asumiendo que existe un slider de zoom para el mapa
+             const mapZoomSliderEl = document.querySelector('#map-page input[type="range"]'); // Selector genérico
+             if(mapZoomSliderEl && map) mapZoomSliderEl.addEventListener('input', (e) => map.setZoom(parseFloat(e.target.value)));
+             // Asumiendo que existe un botón toggle para el panel de POIs en mapa
+             const togglePoisBtnMap = document.getElementById('toggle-pois-btn-map');
+             if (togglePoisBtnMap) togglePoisBtnMap.addEventListener('click', handleTogglePoisPanel);
+
 
              // Iniciar Firebase
              initializeFirebase();
@@ -944,8 +1076,10 @@
                  showMessage("Firebase no está listo o el mapa no está inicializado.", 3000);
                  return;
              }
-             const name = document.getElementById('place-name-simple')?.value.trim();
-             const modelUrl = document.getElementById('place-model-url-simple')?.value.trim();
+             const nameInput = document.getElementById('place-name-simple');
+             const modelUrlInput = document.getElementById('place-model-url-simple');
+             const name = nameInput?.value.trim();
+             const modelUrl = modelUrlInput?.value.trim();
              const center = map.getCenter();
 
              if (!name || !modelUrl) {
@@ -958,14 +1092,15 @@
                  lat: center.lat,
                  lon: center.lng,
                  arScaleMultiplier: 1.0, // Default
+                 poiType: 'model' // Assuming simple placement is always model
                  // Añadir otros campos si es necesario (height, dates, etc.)
              };
              try {
                  await addDoc(poiCollectionRef, newPoi);
                  showMessage(`'${name}' guardado en ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`, 3000);
                  // Limpiar inputs
-                 document.getElementById('place-name-simple').value = '';
-                 document.getElementById('place-model-url-simple').value = '';
+                 if(nameInput) nameInput.value = '';
+                 if(modelUrlInput) modelUrlInput.value = '';
              } catch (error) {
                  showMessage("Error al guardar POI: " + error.message, 4000);
              }
@@ -1012,6 +1147,28 @@
                      showMessage('Error al eliminar del mapa: ' + error.message, 4000);
                      button.disabled = false; button.textContent = 'Eliminar'; button.classList.remove('confirm');
                  }
+             }
+         }
+         // Función para manejar el botón de ocultar/mostrar POIs en el mapa
+         function handleTogglePoisPanel() {
+             const panel = document.getElementById('placed-pois-panel');
+             const button = document.getElementById('toggle-pois-btn-map');
+             if (panel && button) {
+                 const isMinimized = panel.classList.toggle('minimized');
+                 button.textContent = isMinimized ? 'Mostrar POIs' : 'Ocultar POIs';
+             }
+         }
+          // Función para manejar el botón de salto a coordenadas
+         function jumpToCoords() {
+            const latInput = document.getElementById('jumpto-lat');
+            const lonInput = document.getElementById('jumpto-lon');
+             if (!latInput || !lonInput || !map) return;
+             const lat = parseFloat(latInput.value);
+             const lon = parseFloat(lonInput.value);
+             if (!isNaN(lat) && !isNaN(lon)) {
+                map.setView([lat, lon], map.getZoom() > 15 ? map.getZoom() : 18); // Zoom in if needed
+             } else {
+                showMessage("Latitud o longitud inválida.", 3000);
              }
          }
 
