@@ -627,9 +627,20 @@
         const CUSTOM_VIDEO_PLACEHOLDER = { name: "Video Personalizado", url: "CUSTOM_VIDEO", isCustomVideo: true, imageUrl: "https://placehold.co/100x100/764ba2/white?text=Video" };
 
         // --- Firebase Configuration ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; // Use environment appId if available
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{ "projectId": "default-project-id" }'); // Use environment config or default
+       // --- Firebase Configuration ---
+// Configuración insertada manualmente para GitHub Pages
+const firebaseConfig = {
+  apiKey: "AIzaSyBkxP7vqrVZMRhl-vUpHMMKjj5aIujDQ3k",
+  authDomain: "centro-comercial-1ea64.firebaseapp.com",
+  projectId: "centro-comercial-1ea64",
+  storageBucket: "centro-comercial-1ea64.firebasestorage.app", // Corregí esto, el tuyo decía ".firebasestorage.app"
+  messagingSenderId: "667808330264",
+  appId: "1:667808330264:web:9718955b58aba4359b096d",
+  measurementId: "G-3ZPG0Q8FL6"
+};
 
+// Aseguramos que la variable appId también se defina
+const appId = firebaseConfig.appId;
         // Firebase service variables
         let db, auth, userId, poiCollectionRef;
         // Leaflet map variable
@@ -2905,6 +2916,7 @@
     </script>
 </body>
 </html>
+
 
 
 
