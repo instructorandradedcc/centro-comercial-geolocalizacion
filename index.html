@@ -4,14 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Panel de Administración AR (Geolocalización)</title>
-    <!-- Favicon -->
     <link rel="icon" href="https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/favicon3dAR.ico">
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- A-Frame y AR.js -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-    <!-- Leaflet.js -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
@@ -357,23 +354,19 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-    <!-- PAGE 0: Login -->
     <div id="login-page" class="page active flex items-center justify-center bg-gray-200">
         <div class="bg-white p-10 rounded-lg shadow-xl text-center max-w-sm w-full">
             <h1 class="text-3xl font-bold text-blue-700 mb-6">Admin AR</h1>
             <p class="text-gray-600 mb-8">Por favor, inicia sesión para continuar.</p>
             <button id="google-login-btn" class="control-button bg-blue-500 hover:bg-blue-600 w-full flex items-center justify-center gap-2">
-                <!-- Google Icon SVG -->
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21.35 12.24c0-.79-.07-1.54-.2-2.28h-9.15v4.3h5.16c-.22 1.4-.87 2.6-1.95 3.4v2.8h3.59c2.1-1.9 3.3-4.5 3.3-7.22z"/><path d="M12 21.8c2.6 0 4.7-.87 6.2-2.3l-3.6-2.8c-.87.6-1.9.9-3.1.9-2.4 0-4.5-1.6-5.2-3.8H3.1v2.9c1.5 3 4.5 5 8.2 5z"/><path d="M6.8 14.3c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8V7.8H3.1c-.6 1.2-1 2.5-1 4s.4 2.8 1 4l3.7-2.9z"/><path d="M12 6.3c1.4 0 2.6.5 3.6 1.4l3.2-3.2C17.2 2.8 14.8 2 12 2c-3.7 0-6.7 2-8.2 5l3.7 2.9c.7-2.2 2.8-3.8 5.2-3.8z"/></svg>
                 <span>Iniciar Sesión con Google</span>
             </button>
         </div>
     </div>
 
-    <!-- PAGE 1: Admin Panel (Model Selection) -->
     <div id="admin-page" class="page">
         <div class="container mx-auto p-6 max-w-4xl">
-            <!-- Header -->
             <div class="flex flex-wrap justify-between items-center mb-8 gap-4">
                 <div>
                     <h1 class="text-3xl font-bold text-blue-700">Panel de Administración AR</h1>
@@ -390,15 +383,12 @@
                 </div>
             </div>
 
-            <!-- Model/Video Selection Section -->
             <div class="bg-white p-6 rounded-lg shadow-md mb-8">
                 <h2 class="text-2xl font-semibold mb-4">1. Seleccionar Contenido para Colocar</h2>
                 <p class="text-gray-600 mb-4">Marca los modelos o define el video que quieres posicionar en el mapa.</p>
-                <!-- List where model checkboxes will be populated -->
                 <div id="ecopiensa-selection-list" class="grid grid-cols-2 md:grid-cols-3 gap-4">
                      <p id="loading-models-placeholder" class="text-gray-500 col-span-full">Cargando modelos...</p>
                 </div>
-                <!-- Custom Video Option -->
                 <div class="mt-4 pt-4 border-t">
                      <label class="flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer">
                            <input type="checkbox" id="select-video-cb" class="h-5 w-5 text-blue-600">
@@ -410,7 +400,6 @@
                  <button id="clear-selection-btn" class="mt-4 text-sm text-red-600 hover:text-red-800 underline">Limpiar selección guardada</button>
             </div>
 
-            <!-- List of Existing POIs (for deletion) -->
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-2xl font-semibold mb-4">Contenido Geoposicionado Guardado</h2>
                 <div id="poi-list-container" class="space-y-4">
@@ -420,41 +409,33 @@
         </div>
     </div>
 
-    <!-- PAGE 2: Map View (Placement and Editing) -->
     <div id="map-page" class="page">
-        <!-- Map container -->
         <div id="map-container">
             <div id="map-canvas"></div>
             <div id="map-crosshair"></div>
          </div>
 
-        <!-- Jump to coordinates input -->
         <div id="coords-jumpto">
             <input type="number" id="jumpto-lat" placeholder="Latitud" class="w-24 p-1 border rounded text-sm">
             <input type="number" id="jumpto-lon" placeholder="Longitud" class="w-24 p-1 border rounded text-sm">
             <button id="jumpto-btn" class="control-button bg-blue-500 hover:bg-blue-600 p-2 text-sm">Ir</button>
         </div>
-        <!-- Display map center coordinates -->
         <div id="map-center-coords">
              <span>Lat: --</span>
              <span>Lon: --</span>
          </div>
 
-        <!-- Placement Panel (Left) -->
         <div id="placement-panel" class="map-panel">
             <h3 class="text-lg font-semibold mb-2">Colocar Nuevo Contenido</h3>
-            <!-- List of selected models/video available for placement -->
             <div id="models-to-place-list" class="space-y-2 mb-4">
                 <p class="text-sm text-gray-500">No hay contenido nuevo seleccionado. Vuelve al Panel.</p>
             </div>
 
-            <!-- Map Zoom Slider -->
             <div class="slider-container mb-4">
                 <label for="map-zoom-slider" class="block text-sm font-medium text-gray-700">Zoom del Mapa</label>
                 <input id="map-zoom-slider" type="range" min="1" max="22" value="15" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
             </div>
 
-            <!-- POI Configuration Form (initially hidden) -->
             <div id="placement-form-container" class="hidden space-y-3">
                 <h4 id="placing-model-name" class="font-semibold text-blue-600 text-center text-lg mb-2"></h4>
                 <img id="placement-preview-image" src="" alt="Vista previa">
@@ -467,14 +448,12 @@
                      </select>
                  </div>
 
-                 <!-- Fields specific to Model -->
                  <div id="model-fields">
                      <div>
                            <label for="place-model-url" class="block text-sm font-medium text-gray-700">URL Modelo (.glb)</label>
                            <input type="url" id="place-model-url" class="mt-1 w-full p-2 border border-gray-300 rounded bg-gray-100" readonly>
                      </div>
                  </div>
-                 <!-- Fields specific to Video -->
                  <div id="video-fields" class="hidden">
                       <div>
                            <label for="place-video-url" class="block text-sm font-medium text-gray-700">URL Video (.mp4)</label>
@@ -482,8 +461,7 @@
                       </div>
                  </div>
 
-                 <!-- Common Fields -->
-                <div>
+                 <div>
                     <label for="place-name" class="block text-sm font-medium text-gray-700">Nombre Descriptivo</label>
                     <input type="text" id="place-name" class="mt-1 w-full p-2 border border-gray-300 rounded">
                 </div>
@@ -517,17 +495,14 @@
              </div>
         </div>
 
-          <!-- Placed POIs Panel (Right) -->
           <div id="placed-pois-panel" class="map-panel right-3">
               <h3 class="text-lg font-semibold mb-2">Contenido en el Mapa</h3>
               <p class="text-xs text-amber-700 mb-2">Datos guardados en Firebase.</p>
              <div id="placed-pois-list" class="space-y-3">
                  <p class="text-sm text-gray-500">Cargando contenido guardado...</p>
-                 <!-- POI list items will be inserted here -->
-             </div>
+                 </div>
           </div>
 
-          <!-- Location Editing Panel (Appears when editing) -->
           <div id="edit-location-panel" class="map-panel hidden">
               <h3 class="text-lg font-semibold mb-2">Editando Ubicación</h3>
               <p id="editing-poi-name" class="text-sm font-medium text-gray-700 mb-2"></p>
@@ -540,7 +515,6 @@
               </button>
           </div>
 
-        <!-- Map Controls -->
         <div id="map-controls">
             <button id="toggle-pois-btn" class="control-button bg-gray-700 hover:bg-gray-800">Ocultar POIs</button>
             <button id="back-to-admin-btn" class="control-button bg-gray-500 hover:bg-gray-600">Volver al Panel</button>
@@ -548,7 +522,6 @@
          </div>
     </div>
 
-    <!-- PAGE 3: Summary and AR Launch -->
     <div id="summary-page" class="page">
           <div class="container mx-auto p-6 max-w-4xl">
               <div class="flex flex-wrap justify-between items-center mb-8 gap-4">
@@ -568,9 +541,7 @@
           </div>
     </div>
 
-    <!-- PAGE 4: Augmented Reality View -->
     <div id="ar-page" class="page">
-        <!-- AR Loading Screen -->
         <div id="ar-loading-screen" class="ar-loading-screen active">
             <div class="loading-content flex flex-col items-center">
                 <div class="loader"></div>
@@ -582,41 +553,34 @@
             </div>
         </div>
 
-        <!-- Container where the A-Frame scene will be injected -->
         <div id="ar-scene-container"></div>
 
-        <!-- AR Guidance Panel -->
         <div id="ar-guide" style="display:none;">
             Modelo más cercano: <span id="guide-name"></span><br>
             Distancia: <span id="guide-distance">--m</span> - Dirección: <span id="guide-bearing">--</span>
         </div>
 
-        <!-- (NUEVO) Panel de Ubicación en Tiempo Real -->
         <div id="ar-realtime-location" style="display:none;">
              <div>Tu Ubicación (GPS):</div>
              <span id="realtime-lat">Lat: --.--</span><br>
              <span id="realtime-lon">Lon: --.--</span>
         </div>
 
-        <!-- AR Scale Controls Panel (MOVED TO BOTTOM) -->
         <div id="ar-scale-controls">
              <label for="ar-scale-slider" class="scale-label-ar">Ajuste Fino de Escala: <span id="ar-scale-value-display" class="scale-value-ar">1.0x</span></label>
              <input id="ar-scale-slider" type="range" min="0.1" max="5.0" value="1.0" step="0.05" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
         </div>
 
-        <!-- AR Info Panel (GPS Status) -->
         <div class="ar-info-panel">
             <div><strong>GPS:</strong> <span id="gps-status">Buscando...</span></div>
             <div><strong>Precisión:</strong> <span id="gps-accuracy" style="font-weight: bold;">--</span>m</div>
         </div>
-        <!-- AR Controls (Back button, Save Scale) (MOVED TO TOP RIGHT) -->
         <div id="ar-controls">
             <button id="back-to-summary-btn" class="control-button bg-gray-500 hover:bg-gray-600">Volver al Resumen</button>
             <button id="save-ar-scale-btn" class="control-button bg-orange-500 hover:bg-orange-600" disabled>Guardar Escala (para POI más cercano)</button>
          </div>
     </div>
 
-    <!-- Permission Request Modal -->
     <div id="permission-modal" class="permission-modal">
         <div class="permission-content">
             <h2>Permisos necesarios</h2>
@@ -625,10 +589,8 @@
         </div>
     </div>
 
-    <!-- Notification Message Box -->
     <div id="message-box"></div>
 
-    <!-- Firebase SDK Module -->
     <script type="module">
         // Import necessary Firebase functions
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -2087,9 +2049,7 @@
                              <div class="text-xs text-gray-500 mt-2">
                                  <span>Lat: ${poi.lat?.toFixed(5) || 'N/A'}</span> |
                                  <span>Lon: ${poi.lon?.toFixed(5) || 'N/A'}</span> |
-                                 <span>Escala Base: ${poi.scale?.toFixed(1) || 'N/A'}</span> | <!-- Show Base Scale -->
-                                 <span>Escala AR: ${poi.arScaleMultiplier?.toFixed(1) || '1.0'}x</span> <!-- Show AR Multiplier -->
-                             </div>
+                                 <span>Escala Base: ${poi.scale?.toFixed(1) || 'N/A'}</span> | <span>Escala AR: ${poi.arScaleMultiplier?.toFixed(1) || '1.0'}x</span> </div>
                              <div class="text-xs text-gray-500 mt-1">
                                  <span>Inicio: ${poi.startDate || 'N/A'}</span> |
                                  <span>Fin: ${poi.endDate || 'N/A'}</span>
@@ -2368,11 +2328,8 @@
             arSceneContainer.innerHTML = ''; // Clear previous scene if any
 
             // (SOLUCIÓN GPS 1/1)
-            // Añadido:
-            // 1. gpsTimeInterval="3000": Actualiza el GPS cada 3 segundos (menos agresivo).
-            // 2. positionMinAccuracy="100": Acepta una precisión de hasta 100m (más relajado que el default).
-            // 3. simulateLatitude/simulateLongitude: Coordenadas de Tuluá para simular una ubicación
-            //    si el GPS falla (útil para pruebas en PC o interiores).
+            // MODIFICADO: Se eliminaron 'simulateLatitude' y 'simulateLongitude'
+            // para forzar el uso del GPS real del dispositivo.
             const sceneHTML = `
                 <a-scene
                     id="ar-scene"
@@ -2391,8 +2348,6 @@
                             maxDistance: 1000;
                             gpsTimeInterval: 3000;
                             positionMinAccuracy: 100;
-                            simulateLatitude: 4.0835;
-                            simulateLongitude: -76.1915;
                         "
                         look-controls="enabled: false"
                         rotation-reader>
