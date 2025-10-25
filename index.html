@@ -278,6 +278,32 @@
              border: 2px solid #FFC107; /* Amber border */
          }
 
+        /* (NUEVO) Panel de Ubicación en Tiempo Real */
+        #ar-realtime-location {
+             position: fixed;
+             top: 170px; /* Debajo del panel ar-guide */
+             left: 50%;
+             transform: translateX(-50%);
+             background-color: rgba(0, 0, 0, 0.7);
+             color: white;
+             padding: 10px 15px;
+             border-radius: 8px;
+             font-size: 0.9rem; /* Un poco más pequeño */
+             font-family: monospace; /* Bueno para coords */
+             z-index: 9999;
+             text-align: center;
+             display: none; /* Oculto por defecto, se muestra en startARFlow */
+             border: 2px solid #f44336; /* Borde rojo como pidió el usuario */
+             min-width: 250px;
+         }
+        #ar-realtime-location div {
+             font-family: 'Inter', sans-serif; /* Fuente normal para el título */
+             font-weight: bold;
+             font-size: 1.0rem;
+             margin-bottom: 5px;
+         }
+
+
         /* AR Scale Controls Panel (SOLUCIÓN UI 2/2) */
         #ar-scale-controls {
             position: fixed;
@@ -565,6 +591,13 @@
             Distancia: <span id="guide-distance">--m</span> - Dirección: <span id="guide-bearing">--</span>
         </div>
 
+        <!-- (NUEVO) Panel de Ubicación en Tiempo Real -->
+        <div id="ar-realtime-location" style="display:none;">
+             <div>Tu Ubicación (GPS):</div>
+             <span id="realtime-lat">Lat: --.--</span><br>
+             <span id="realtime-lon">Lon: --.--</span>
+        </div>
+
         <!-- AR Scale Controls Panel (MOVED TO BOTTOM) -->
         <div id="ar-scale-controls">
              <label for="ar-scale-slider" class="scale-label-ar">Ajuste Fino de Escala: <span id="ar-scale-value-display" class="scale-value-ar">1.0x</span></label>
@@ -620,7 +653,7 @@
 
         // --- App Version ---
         // Increment this with EVERY change.
-        const APP_VERSION = '1.47'; // General stability updates and minor fixes
+        const APP_VERSION = '1.48'; // (NUEVO) Añadido panel de ubicación en tiempo real en AR
         const LOCALSTORAGE_KEY = 'arAdminModelSelection'; // Key for local storage
 
         // --- Ecopiensa Models Data ---
@@ -715,6 +748,8 @@
 
         // AR Guidance Elements
         let arGuide, guideName, guideDistance, guideBearing;
+        // (NUEVO) AR Realtime Location Elements
+        let arRealtimeLocationEl, realtimeLatEl, realtimeLonEl;
         // AR Scale Slider Elements
         let arScaleSlider, arScaleValueDisplay, saveArScaleBtn;
 
@@ -2136,6 +2171,11 @@
 
                 updateARProgressBar('permissions'); // Update progress after getting permissions
 
+                // (NUEVO) Mostrar el panel de ubicación real después de obtener permisos
+                if (arRealtimeLocationEl) {
+                    arRealtimeLocationEl.style.display = 'block';
+                }
+
             } catch (err) {
                 // Handle permission errors
                 console.error("AR Permission Error:", err);
@@ -2651,6 +2691,12 @@
 
             // Reset AR UI elements
             if (arGuide) arGuide.style.display = 'none'; // Hide guide
+            // (NUEVO) Ocultar y resetear el panel de ubicación en tiempo real
+            if (arRealtimeLocationEl) {
+                arRealtimeLocationEl.style.display = 'none';
+                if (realtimeLatEl) realtimeLatEl.textContent = "Lat: --.--";
+                if (realtimeLonEl) realtimeLonEl.textContent = "Lon: --.--";
+            }
             if (arScaleSlider) arScaleSlider.value = 1.0; // Reset visual slider
             if (saveArScaleBtn) saveArScaleBtn.disabled = true; // Disable save button
             closestPoiIdForScaling = null; // Reset closest POI ID
@@ -2761,6 +2807,14 @@
                  else gpsAccuracyEl.style.color = 'lime';
             }
 
+            // (NUEVO) Actualizar panel de ubicación en tiempo real
+            if (realtimeLatEl) {
+                 realtimeLatEl.textContent = `Lat: ${lastKnownGps.latitude.toFixed(6)}`;
+            }
+            if (realtimeLonEl) {
+                 realtimeLonEl.textContent = `Lon: ${lastKnownGps.longitude.toFixed(6)}`;
+            }
+
             // Update the AR guidance panel (which handles scale button state)
             updateARGuide();
         }
@@ -2782,6 +2836,15 @@
                  gpsAccuracyEl.textContent = "N/A";
                  gpsAccuracyEl.style.color = 'red';
             }
+
+            // (NUEVO) Actualizar panel de ubicación en tiempo real
+            if (realtimeLatEl) {
+                 realtimeLatEl.textContent = "Lat: Error";
+            }
+            if (realtimeLonEl) {
+                 realtimeLonEl.textContent = "Lon: Error";
+            }
+
             // Determine error message based on code
             let errorMsg = "Error de GPS.";
             const code = event.detail?.code; // Get error code from event detail
@@ -2834,6 +2897,11 @@
             guideName = document.getElementById('guide-name');
             guideDistance = document.getElementById('guide-distance');
             guideBearing = document.getElementById('guide-bearing');
+            // (NUEVO) Refs para el panel de ubicación en tiempo real
+            arRealtimeLocationEl = document.getElementById('ar-realtime-location');
+            realtimeLatEl = document.getElementById('realtime-lat');
+            realtimeLonEl = document.getElementById('realtime-lon');
+            // Fin (NUEVO)
             arScaleSlider = document.getElementById('ar-scale-slider');
             arScaleValueDisplay = document.getElementById('ar-scale-value-display');
             saveArScaleBtn = document.getElementById('save-ar-scale-btn'); // Ref for save scale button
@@ -2967,6 +3035,7 @@
     </script>
 </body>
 </html>
+
 
 
 
