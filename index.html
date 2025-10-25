@@ -615,7 +615,7 @@
 
         // --- App Version ---
         // Increment this with EVERY change.
-        const APP_VERSION = '1.49'; // (NUEVO) Añadido panel de ubicación en tiempo real en AR
+        const APP_VERSION = '1.50'; // (NUEVO) Añadido panel de ubicación en tiempo real en AR
         const LOCALSTORAGE_KEY = 'arAdminModelSelection'; // Key for local storage
 
         // --- Ecopiensa Models Data ---
@@ -632,13 +632,17 @@
         // Placeholder for custom video selection
         const CUSTOM_VIDEO_PLACEHOLDER = { name: "Video Personalizado", url: "CUSTOM_VIDEO", isCustomVideo: true, imageUrl: "https://placehold.co/100x100/764ba2/white?text=Video" };
 
-        // --- Firebase Configuration (SOLUCIÓN FIREBASE 1/2) ---
-        // Lógica robusta para cargar la configuración de Firebase
+        
+        // --- INICIO: Bloque de configuración de Firebase ---
+
+        // Tal como solicitaste, las claves hardcoded han sido eliminadas.
+        // Pega tu configuración de Firebase aquí.
+        
         let firebaseConfig;
         let appId; // Este será el 'projectId' o '__app_id'
 
         try {
-            // Comprueba si las variables globales de Canvas están definidas
+             // Intenta usar la configuración de Canvas si existe
             if (typeof __firebase_config !== 'undefined' && __firebase_config &&
                 typeof __app_id !== 'undefined' && __app_id) {
                 
@@ -646,36 +650,39 @@
                 appId = __app_id; // Usa el __app_id de Canvas
                 console.log("Usando configuración de Firebase y App ID de Canvas.");
             } else {
-                // Fallback a la configuración hardcodeada si las variables de Canvas no están
-                console.warn("Variables __firebase_config o __app_id no definidas. Usando fallback hardcoded.");
-                firebaseConfig = {
-                    apiKey: "AIzaSyBkxP7vqrVZMRhl-vUpHMMKjj5aIujDQ3k",
-                    authDomain: "centro-comercial-1ea64.firebaseapp.com",
-                    projectId: "centro-comercial-1ea64",
-                    storageBucket: "centro-comercial-1ea64.firebasestorage.app",
-                    messagingSenderId: "667808330264",
-                    appId: "1:667808330264:web:9718955b58aba4359b096d",
-                    measurementId: "G-3ZPG0Q8FL6"
-                };
-                // IMPORTANTE: En el fallback, usamos el 'projectId' como 'appId' para la ruta de la BD,
-                // ya que las reglas de Firestore generalmente usan 'projectId' como {appId}
+                 // Si no, usa la configuración manual que debes pegar abajo
+                console.warn("Variables de Canvas no definidas. Usando la configuración manual.");
+                
+                // !! IMPORTANTE !!
+                // !! Pega tu objeto de configuración de Firebase aquí (reemplaza esto): !!
+                const firebaseConfig = {
+  apiKey: "AIzaSyBkxP7vqrVZMRhl-vUpHMMKjj5aIujDQ3k",
+  authDomain: "centro-comercial-1ea64.firebaseapp.com",
+  projectId: "centro-comercial-1ea64",
+  storageBucket: "centro-comercial-1ea64.firebasestorage.app",
+  messagingSenderId: "667808330264",
+  appId: "1:667808330264:web:9718955b58aba4359b096d",
+  measurementId: "G-3ZPG0Q8FL6"
+};
+                
+                // Asegúrate de que 'firebaseConfig.projectId' tenga un valor
+                if (!firebaseConfig.projectId) {
+                    throw new Error("firebaseConfig.projectId no está definido. Es necesario.");
+                }
+                
+                // Usamos el projectId como el 'appId' para la colección de la base de datos
                 appId = firebaseConfig.projectId; 
-                console.log("ADVERTENCIA: Usando projectId como fallback para appId:", appId);
+                console.log("Usando projectId como appId para la base de datos:", appId);
             }
+        
         } catch (e) {
-            console.error("Error fatal parseando la configuración de Firebase. Usando fallback.", e);
-            // Fallback súper-seguro en caso de que JSON.parse falle
-            firebaseConfig = {
-                apiKey: "AIzaSyBkxP7vqrVZMRhl-vUpHMMKjj5aIujDQ3k",
-                authDomain: "centro-comercial-1ea64.firebaseapp.com",
-                projectId: "centro-comercial-1ea64",
-                storageBucket: "centro-comercial-1ea64.firebasestorage.app",
-                messagingSenderId: "667808330264",
-                appId: "1:667808330264:web:9718955b58aba4359b096d",
-                measurementId: "G-3ZPG0Q8FL6"
-            };
-            appId = firebaseConfig.projectId; // Usar projectId en caso de error
+            console.error("Error fatal en la configuración de Firebase. La aplicación no funcionará.", e);
+            // Dejamos un objeto vacío para evitar más errores, aunque la app no funcionará
+            firebaseConfig = {};
+            appId = null;
         }
+        // --- FIN: Bloque de configuración de Firebase ---
+
 
         // Firebase service variables
         let db, auth, userId, poiCollectionRef;
@@ -1009,7 +1016,7 @@
             if (gotoMapButton) gotoMapButton.disabled = true; // Disable map button until ready
 
             // Basic validation of Firebase config
-            if (!firebaseConfig || !firebaseConfig.projectId) {
+            if (!firebaseConfig || !firebaseConfig.projectId || !appId) {
                 const errorMsg = "Error fatal: Configuración de Firebase inválida o incompleta.";
                 console.error(errorMsg, firebaseConfig);
                 if(loadingPois) loadingPois.textContent = errorMsg;
@@ -2990,8 +2997,6 @@
     </script>
 </body>
 </html>
-
-
 
 
 
