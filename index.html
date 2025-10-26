@@ -639,7 +639,7 @@
         // Pega tu configuración de Firebase aquí.
         
         let firebaseConfig;
-        let appId;1:667808330264:web:9718955b58aba4359b096d // Este será el 'projectId' o '__app_id'
+        let appId; // Este será el 'projectId' o '__app_id'
 
         try {
              // Intenta usar la configuración de Canvas si existe
@@ -655,18 +655,21 @@
                 
                 // !! IMPORTANTE !!
                 // !! Pega tu objeto de configuración de Firebase aquí (reemplaza esto): !!
-                const firebaseConfig = {
-  apiKey: "AIzaSyBkxP7vqrVZMRhl-vUpHMMKjj5aIujDQ3k",
-  authDomain: "centro-comercial-1ea64.firebaseapp.com",
-  projectId: "centro-comercial-1ea64",
-  storageBucket: "centro-comercial-1ea64.firebasestorage.app",
-  messagingSenderId: "667808330264",
-  appId: "1:667808330264:web:9718955b58aba4359b096d",
-  measurementId: "G-3ZPG0Q8FL6"
-};
+                
+                // CORRECCIÓN: Asignamos a la variable 'firebaseConfig' de arriba,
+                // no declaramos una nueva con 'const'.
+                firebaseConfig = {
+                  apiKey: "AIzaSyBkxP7vqrVZMRhl-vUpHMMKjj5aIujDQ3k",
+                  authDomain: "centro-comercial-1ea64.firebaseapp.com",
+                  projectId: "centro-comercial-1ea64",
+                  storageBucket: "centro-comercial-1ea64.firebasestorage.app",
+                  messagingSenderId: "667808330264",
+                  appId: "1:667808330264:web:9718955b58aba4359b096d",
+                  measurementId: "G-3ZPG0Q8FL6"
+                };
                 
                 // Asegúrate de que 'firebaseConfig.projectId' tenga un valor
-                if (!firebaseConfig.projectId) {
+                if (!firebaseConfig.projectId) { // Ahora esto usa la variable correcta
                     throw new Error("firebaseConfig.projectId no está definido. Es necesario.");
                 }
                 
@@ -678,7 +681,7 @@
         } catch (e) {
             console.error("Error fatal en la configuración de Firebase. La aplicación no funcionará.", e);
             // Dejamos un objeto vacío para evitar más errores, aunque la app no funcionará
-            firebaseConfig = {};
+            firebaseConfig = {}; // Asigna a la variable de arriba
             appId = null;
         }
         // --- FIN: Bloque de configuración de Firebase ---
@@ -3007,6 +3010,7 @@
     </script>
 </body>
 </html>
+
 
 
 
