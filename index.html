@@ -615,7 +615,7 @@
 
         // --- App Version ---
         // Increment this with EVERY change.
-        const APP_VERSION = '1.50'; // (NUEVO) Añadido panel de ubicación en tiempo real en AR
+        const APP_VERSION = '1.51'; // (FIX) Corregidos atributos de gps-camera (gpsMinDistance, etc.)
         const LOCALSTORAGE_KEY = 'arAdminModelSelection'; // Key for local storage
 
         // --- Ecopiensa Models Data ---
@@ -2337,6 +2337,13 @@
             // (SOLUCIÓN GPS 1/1)
             // MODIFICADO: Se eliminaron 'simulateLatitude' y 'simulateLongitude'
             // para forzar el uso del GPS real del dispositivo.
+            
+            // ===================================================================
+            // INICIO DE LA CORRECCIÓN GPS
+            // ===================================================================
+            // Los atributos 'minDistance', 'maxDistance' y 'positionMinAccuracy'
+            // deben tener el prefijo 'gps' para que el componente gps-camera
+            // de AR.js los reconozca.
             const sceneHTML = `
                 <a-scene
                     id="ar-scene"
@@ -2351,10 +2358,10 @@
                     <a-camera
                         id="ar-camera"
                         gps-camera="
-                            minDistance: 1;
-                            maxDistance: 1000;
+                            gpsMinDistance: 1;
+                            gpsMaxDistance: 1000;
                             gpsTimeInterval: 3000;
-                            positionMinAccuracy: 100;
+                            gpsMinAccuracy: 100;
                         "
                         look-controls="enabled: false"
                         rotation-reader>
@@ -2362,6 +2369,9 @@
 
                 </a-scene>
             `;
+            // ===================================================================
+            // FIN DE LA CORRECCIÓN GPS
+            // ===================================================================
 
             try {
                 // Inject the scene HTML
@@ -2997,6 +3007,7 @@
     </script>
 </body>
 </html>
+
 
 
 
