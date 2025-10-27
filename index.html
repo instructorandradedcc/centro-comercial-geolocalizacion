@@ -727,7 +727,7 @@
 
         // --- App Version ---
         // Increment this with EVERY change.
-        const APP_VERSION = '1.54'; // (MAJOR UPDATE) Corregido GPS, agregado detección de superficies WebXR y ubicaciones en interiores.
+        const APP_VERSION = '1.55'; // (CRITICAL FIX) Corregido Firebase: agregada llamada a initializeFirebase() y mejorado debugging.
         const LOCALSTORAGE_KEY = 'arAdminModelSelection'; // Key for local storage
 
         // --- Ecopiensa Models Data ---
@@ -1140,6 +1140,9 @@
          */
         async function initializeFirebase() {
             console.log("Initializing Firebase...");
+            console.log("Firebase Config:", firebaseConfig);
+            console.log("App ID:", appId);
+            
             if (loadingPois) loadingPois.textContent = "Inicializando conexión Firebase...";
             if (gotoMapButton) gotoMapButton.disabled = true; // Disable map button until ready
 
@@ -1147,6 +1150,8 @@
             if (!firebaseConfig || !firebaseConfig.projectId || !appId || appId === 'default-app-id-fallback') {
                 const errorMsg = "Error fatal: Configuración de Firebase inválida o incompleta. Revisa el script.";
                 console.error(errorMsg, firebaseConfig);
+                console.error("firebaseConfig:", firebaseConfig);
+                console.error("appId:", appId);
                 if(loadingPois) loadingPois.textContent = errorMsg;
                 showMessage(errorMsg, 10000);
                  return;
@@ -1154,18 +1159,31 @@
 
             try {
                 // Initialize Firebase App and services
+                console.log("Inicializando Firebase App...");
                 const app = initializeApp(firebaseConfig);
+                console.log("Firebase App inicializada:", app.name);
+                
+                console.log("Obteniendo Firestore...");
                 db = getFirestore(app);
+                console.log("Firestore obtenido:", db);
+                
+                console.log("Obteniendo Auth...");
                 auth = getAuth(app);
+                console.log("Auth obtenido:", auth);
+                
                 console.log("Firestore and Auth services obtained.");
                 setLogLevel('debug'); // Enable Firestore debug logging
 
                 // Listen for changes in user authentication state
+                console.log("Configurando listener de autenticación...");
                 onAuthStateChanged(auth, async (user) => {
+                    console.log("Auth state changed:", user ? `User: ${user.email}` : "No user");
                     if (user) {
                         // --- User is Signed In ---
                         userId = user.uid;
                         console.log('Firebase User Authenticated. UID:', userId);
+                        console.log('User email:', user.email);
+                        console.log('User display name:', user.displayName);
                         // Update UI with user info
                         if (userEmail) userEmail.textContent = user.email || userId;
                         if (userInfo) userInfo.classList.remove('hidden');
@@ -1173,9 +1191,14 @@
 
                         // (SOLUCIÓN FIREBASE 2/2)
                         // Construye la ruta de la colección usando la variable 'appId' (projectId o __app_id)
+                        console.log("Creando referencia de colección...");
+                        console.log("appId:", appId);
+                        console.log("userId:", userId);
                         const collectionPath = `/artifacts/${appId}/users/${userId}/pois`;
+                        console.log("Collection path:", collectionPath);
                         poiCollectionRef = collection(db, collectionPath);
                         console.log('POI Collection configurado para:', collectionPath);
+                        console.log('POI Collection reference:', poiCollectionRef);
 
                         firebaseReady = true; // Mark Firebase as ready
                         if (gotoMapButton) gotoMapButton.disabled = false; // Enable map button
@@ -1229,18 +1252,44 @@
          * Handles the Google Sign-In process via popup.
          */
          async function handleGoogleLogin() {
+             console.log("Iniciando login con Google...");
              const provider = new GoogleAuthProvider();
+             
              if (!auth) {
                  console.error("Auth service not initialized.");
                  showMessage("Error: Servicio de autenticación no listo.", 3000);
                  return;
              }
+             
+             if (!firebaseReady) {
+                 console.error("Firebase not ready yet.");
+                 showMessage("Error: Firebase aún no está listo. Intenta en unos segundos.", 3000);
+                 return;
+             }
+             
              try {
-                 await signInWithPopup(auth, provider);
+                 console.log("Llamando a signInWithPopup...");
+                 const result = await signInWithPopup(auth, provider);
+                 console.log("Login exitoso:", result.user.email);
+                 showMessage(`¡Bienvenido ${result.user.email}!`, 3000);
                  // onAuthStateChanged will handle navigation and setup
              } catch (error) {
                  console.error("Google Login Error:", error);
-                 showMessage("Error al iniciar sesión: " + (error.message || "Intenta de nuevo."), 5000);
+                 console.error("Error code:", error.code);
+                 console.error("Error message:", error.message);
+                 
+                 let errorMessage = "Error al iniciar sesión: ";
+                 if (error.code === 'auth/popup-closed-by-user') {
+                     errorMessage += "Login cancelado por el usuario.";
+                 } else if (error.code === 'auth/popup-blocked') {
+                     errorMessage += "Popup bloqueado. Permite ventanas emergentes.";
+                 } else if (error.code === 'auth/unauthorized-domain') {
+                     errorMessage += "Dominio no autorizado. Contacta al administrador.";
+                 } else {
+                     errorMessage += error.message || "Intenta de nuevo.";
+                 }
+                 
+                 showMessage(errorMessage, 5000);
              }
          }
 
@@ -3282,6 +3331,9 @@
             // Attach AR listeners
             if (arScaleSlider) arScaleSlider.addEventListener('input', applyFineScaleAdjustment); // Adjust scale visually
             if (saveArScaleBtn) saveArScaleBtn.addEventListener('click', handleSaveARScale); // Save scale to Firebase
+            
+            // Initialize Firebase (CORRECCIÓN CRÍTICA)
+            initializeFirebase();
 
             // Attach Admin POI list delete listener (uses event delegation)
             if (listContainer) {
