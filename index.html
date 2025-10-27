@@ -727,7 +727,7 @@
 
         // --- App Version ---
         // Increment this with EVERY change.
-        const APP_VERSION = '1.56'; // (FIREBASE FIX) Simplificado código Firebase para coincidir con index (49) que funciona.
+        const APP_VERSION = '1.57'; // (SOLUCIÓN GPS/CÁMARA) Corregido conflicto de permisos y añadido positionMinAccuracy.
         const LOCALSTORAGE_KEY = 'arAdminModelSelection'; // Key for local storage
 
         // --- Ecopiensa Models Data ---
@@ -797,7 +797,6 @@
             appId = null;
         }
         // --- FIN: Bloque de configuración de Firebase ---
-
 
         // Firebase service variables
         let db, auth, userId, poiCollectionRef;
@@ -965,7 +964,7 @@
                     break;
                 case 'permissions':
                     progress = 20;
-                    statusText = 'Permisos de cámara y ubicación concedidos.';
+                    statusText = 'Permiso de ubicación concedido.'; // (CORRECCIÓN) Mensaje solo para ubicación
                     break;
                 case 'load_assets_start':
                     progress = 25;
@@ -2233,12 +2232,16 @@
 
             // 1. Request Permissions (Camera and GPS High Accuracy)
             try {
-                // Request Camera permission
+                // (CORRECCIÓN 1/3) Se eliminó la llamada manual a getUserMedia({ video: true }).
+                // AR.js DEBE manejar la solicitud de la cámara por sí mismo.
+                // Dejar esto aquí creaba un conflicto y es la causa de la pantalla blanca.
+                /*
                 loadingStatusText.textContent = "Verificando permisos de cámara...";
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 stream.getTracks().forEach(track => track.stop()); // Stop stream immediately after getting permission
+                */
 
-                // Request GPS High Accuracy permission
+                // Request GPS High Accuracy permission (ESTO SÍ SE QUEDA)
                 loadingStatusText.textContent = "Verificando permisos de ubicación (Alta Precisión)...";
                 await new Promise((resolve, reject) => {
                     navigator.geolocation.getCurrentPosition(
@@ -2279,7 +2282,12 @@
                 let msg = err.message || "Error de permisos AR. Inténtalo de nuevo.";
                 // Provide specific message if denied
                  if (err.message.includes("denied")) {
-                      msg = "Acceso a cámara o ubicación denegado. Habilítalos en la configuración del navegador.";
+                      // Mensaje específico si el error es de GPS, la cámara la pedirá AR.js
+                      if(err.message.includes("GPS")) {
+                           msg = "Acceso a ubicación denegado. Habilítalo en la configuración del navegador.";
+                      } else {
+                           msg = "Error de permisos. Habilita cámara y ubicación en la config. del navegador.";
+                      }
                  }
                 showMessage(msg, 6000);
                 return; // Stop AR flow
@@ -2325,7 +2333,7 @@
             } catch (sceneOrAssetError) {
                 console.error("Error during AR Scene/Asset initialization:", sceneOrAssetError);
                 arLoadingScreen.classList.remove('active');
-                showMessage("Error al preparar la escena AR. Verifica la consola.", 5000);
+                showMessage("Error al preparar la escena AR: " + sceneOrAssetError.message, 5000);
                 return; // Stop AR flow
             }
 
@@ -2341,6 +2349,7 @@
                     updateARProgressBar('complete'); // Mark as complete
                     setTimeout(() => {
                         arLoadingScreen.classList.remove('active'); // Hide loading screen
+                        // AR.js mostrará su propia solicitud de cámara si es necesario
                         showMessage("AR Iniciada. Esperando señal GPS estable...");
                     }, 500); // Short delay before hiding
                 }, 1000); // Give GPS a moment
@@ -2476,13 +2485,21 @@
                     vr-mode-ui="enabled: false"
                     renderer="logarithmicDepthBuffer: true; antialias: true; precision: high; alpha: true;"
                     style="background: transparent;"
-                    arjs="sourceType: webcam; videoTexture: true; sourceWidth: 1280; sourceHeight: 720; displayWidth: 1280; displayHeight: 720; debugUIEnabled: false; trackingMethod: best;"
-
+                    
+                    <!-- (CORRECCIÓN 2/3) Se eliminaron las resoluciones fijas (sourceWidth, displayWidth, etc.) -->
+                    <!-- Dejar que AR.js elija la mejor resolución es más robusto y evita fallos si la cámara no soporta 1280x720 -->
+                    arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false; trackingMethod: best;"
+                >
                     <a-assets timeout="60000"></a-assets>
 
                     <a-camera
                         id="ar-camera"
-                        gps-camera="gpsMinDistance: 5; gpsTimeInterval: 1000;" 
+                        
+                        <!-- (CORRECCIÓN 3/3) Se añadió 'positionMinAccuracy: 30' -->
+                        <!-- Esto permite que el GPS reporte una ubicación aunque la precisión sea de 30 metros. -->
+                        <!-- Sin esto, se queda en '--.--' hasta que la precisión es perfecta, lo cual es lento. -->
+                        gps-camera="gpsMinDistance: 5; gpsTimeInterval: 1000; positionMinAccuracy: 30;" 
+                        
                         rotation-reader
                         camera="active: true; near: 0.1; far: 10000;"
                         look-controls="enabled: false">
@@ -2499,7 +2516,20 @@
 
                 const assets = arScene.querySelector('a-assets');
                 if (!assets) throw new Error("a-assets element not found after injection.");
-
+                
+                // (NUEVA CORRECCIÓN) Manejar el error de permiso de cámara de AR.js
+                arScene.addEventListener('arjs-video-error', (e) => {
+                     console.error("AR.js video error:", e.detail);
+                     let msg = "Error al iniciar la cámara.";
+                     if (e.detail?.name === "NotAllowedError" || e.detail?.name === "PermissionDeniedError") {
+                         msg = "Permiso de cámara denegado. Habilítalo en la configuración del navegador.";
+                         permissionModal.style.display = 'flex'; // Mostrar modal de permisos de nuevo
+                     }
+                     showMessage(msg, 6000);
+                     arLoadingScreen.classList.remove('active'); // Ocultar pantalla de carga
+                     stopAR(); // Detener el flujo
+                });
+                
                 // Create and add A-Frame entities for each active POI
                 activePois.forEach((poi) => {
                     try { // Add try-catch around each entity creation
@@ -2863,8 +2893,8 @@
             // Se comprueban ambas para mayor robustez.
             const pos = event.detail.coords || event.detail.position?.coords;
             
-            if (!pos) {
-                console.warn("GPS update event missing position data.", event.detail);
+            if (!pos || pos.latitude === undefined || pos.longitude === undefined) {
+                console.warn("GPS update event missing valid position data.", event.detail);
                 return;
             }
             const accuracy = pos.accuracy?.toFixed(2) ?? '??'; // Handle potentially missing accuracy
@@ -3348,13 +3378,6 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
 
 
 
