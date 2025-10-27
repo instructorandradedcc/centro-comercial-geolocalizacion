@@ -6,8 +6,10 @@
     <title>Panel de Administración AR (Geolocalización)</title>
     <link rel="icon" href="https://raw.githubusercontent.com/instructorandradedcc/propuesta-AR/main/favicon3dAR.ico">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    
+    <!-- (MEJORA) Bibliotecas A-Frame y AR.js actualizadas a versiones estables -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/v3.4.5/aframe/build/aframe-ar-nft.js"></script> <!-- Esta versión incluye location-based (GPS) -->
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -161,7 +163,7 @@
         }
         #edit-location-panel {
              border: 2px solid #f59e0b; /* Amber border for editing */
-         }
+        }
          /* Placed POIs panel on the right */
         #placed-pois-panel {
              left: auto;
@@ -350,6 +352,11 @@
             position: fixed !important; top: 0 !important;
             left: 0 !important; width: 100% !important; height: 100% !important;
         }
+
+        /* (NUEVO) Canvas temporal para captura de pantalla */
+        #screenshot-canvas {
+            display: none;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -462,29 +469,29 @@
                  </div>
 
                  <div>
-                    <label for="place-name" class="block text-sm font-medium text-gray-700">Nombre Descriptivo</label>
-                    <input type="text" id="place-name" class="mt-1 w-full p-2 border border-gray-300 rounded">
-                </div>
-                <div>
-                    <label for="place-scale" class="block text-sm font-medium text-gray-700">Escala Base (Video: ancho m)</label>
-                    <input type="number" id="place-scale" class="mt-1 w-full p-2 border border-gray-300 rounded" step="0.1" value="1.0" min="0.1">
-                </div>
-                <div>
-                    <label for="place-ground-height" class="block text-sm font-medium text-gray-700">Altura sobre terreno (m)</label>
-                    <input type="number" id="place-ground-height" class="mt-1 w-full p-2 border border-gray-300 rounded" step="0.1" value="0.0">
-                </div>
-                <div>
-                    <label for="place-sound-url" class="block text-sm font-medium text-gray-700">URL Sonido Fondo (Opcional, .mp3)</label>
-                    <input type="url" id="place-sound-url" class="mt-1 w-full p-2 border border-gray-300 rounded" placeholder="https://.../musica.mp3">
-                </div>
-                <div>
-                    <label for="place-start-date" class="block text-sm font-medium text-gray-700">Fecha Inicio</label>
-                    <input type="date" id="place-start-date" class="mt-1 w-full p-2 border border-gray-300 rounded">
-                </div>
-                <div>
-                    <label for="place-end-date" class="block text-sm font-medium text-gray-700">Fecha Fin</label>
-                    <input type="date" id="place-end-date" class="mt-1 w-full p-2 border border-gray-300 rounded">
-                </div>
+                   <label for="place-name" class="block text-sm font-medium text-gray-700">Nombre Descriptivo</label>
+                   <input type="text" id="place-name" class="mt-1 w-full p-2 border border-gray-300 rounded">
+                 </div>
+                 <div>
+                   <label for="place-scale" class="block text-sm font-medium text-gray-700">Escala Base (Video: ancho m)</label>
+                   <input type="number" id="place-scale" class="mt-1 w-full p-2 border border-gray-300 rounded" step="0.1" value="1.0" min="0.1">
+                 </div>
+                 <div>
+                   <label for="place-ground-height" class="block text-sm font-medium text-gray-700">Altura sobre terreno (m)</label>
+                   <input type="number" id="place-ground-height" class="mt-1 w-full p-2 border border-gray-300 rounded" step="0.1" value="0.0">
+                 </div>
+                 <div>
+                   <label for="place-sound-url" class="block text-sm font-medium text-gray-700">URL Sonido Fondo (Opcional, .mp3)</label>
+                   <input type="url" id="place-sound-url" class="mt-1 w-full p-2 border border-gray-300 rounded" placeholder="https://.../musica.mp3">
+                 </div>
+                 <div>
+                   <label for="place-start-date" class="block text-sm font-medium text-gray-700">Fecha Inicio</label>
+                   <input type="date" id="place-start-date" class="mt-1 w-full p-2 border border-gray-300 rounded">
+                 </div>
+                 <div>
+                   <label for="place-end-date" class="block text-sm font-medium text-gray-700">Fecha Fin</label>
+                   <input type="date" id="place-end-date" class="mt-1 w-full p-2 border border-gray-300 rounded">
+                 </div>
 
                 <p class="text-sm text-blue-600 font-semibold pt-2">Mueve el mapa para centrar la cruz en la ubicación deseada.</p>
                 <button id="save-placement-btn" class="w-full control-button bg-green-500 hover:bg-green-600 font-bold">
@@ -495,25 +502,25 @@
              </div>
         </div>
 
-          <div id="placed-pois-panel" class="map-panel right-3">
-              <h3 class="text-lg font-semibold mb-2">Contenido en el Mapa</h3>
-              <p class="text-xs text-amber-700 mb-2">Datos guardados en Firebase.</p>
-             <div id="placed-pois-list" class="space-y-3">
+         <div id="placed-pois-panel" class="map-panel right-3">
+             <h3 class="text-lg font-semibold mb-2">Contenido en el Mapa</h3>
+             <p class="text-xs text-amber-700 mb-2">Datos guardados en Firebase.</p>
+            <div id="placed-pois-list" class="space-y-3">
                  <p class="text-sm text-gray-500">Cargando contenido guardado...</p>
                  </div>
-          </div>
+         </div>
 
-          <div id="edit-location-panel" class="map-panel hidden">
-              <h3 class="text-lg font-semibold mb-2">Editando Ubicación</h3>
-              <p id="editing-poi-name" class="text-sm font-medium text-gray-700 mb-2"></p>
-              <p class="text-sm text-amber-700 font-semibold mb-3">Mueve el mapa para centrar la cruz en la NUEVA ubicación.</p>
-              <button id="save-edit-location-btn" class="w-full control-button bg-amber-500 hover:bg-amber-600 font-bold mb-2">
-                  Guardar Nueva Ubicación (en la Cruz)
-              </button>
-              <button id="cancel-edit-location-btn" class="w-full secondary-action-btn bg-gray-500 hover:bg-gray-600">
-                  Cancelar Edición
-              </button>
-          </div>
+         <div id="edit-location-panel" class="map-panel hidden">
+             <h3 class="text-lg font-semibold mb-2">Editando Ubicación</h3>
+             <p id="editing-poi-name" class="text-sm font-medium text-gray-700 mb-2"></p>
+             <p class="text-sm text-amber-700 font-semibold mb-3">Mueve el mapa para centrar la cruz en la NUEVA ubicación.</p>
+             <button id="save-edit-location-btn" class="w-full control-button bg-amber-500 hover:bg-amber-600 font-bold mb-2">
+                 Guardar Nueva Ubicación (en la Cruz)
+             </button>
+             <button id="cancel-edit-location-btn" class="w-full secondary-action-btn bg-gray-500 hover:bg-gray-600">
+                 Cancelar Edición
+             </button>
+         </div>
 
         <div id="map-controls">
             <button id="toggle-pois-btn" class="control-button bg-gray-700 hover:bg-gray-800">Ocultar POIs</button>
@@ -523,22 +530,22 @@
     </div>
 
     <div id="summary-page" class="page">
-          <div class="container mx-auto p-6 max-w-4xl">
-              <div class="flex flex-wrap justify-between items-center mb-8 gap-4">
-                     <h1 class="text-3xl font-bold text-purple-700">Resumen de Configuración AR</h1>
-                     <div class="flex gap-2">
-                         <button id="back-to-map-btn" class="control-button bg-gray-500 hover:bg-gray-600">Volver al Mapa</button>
-                         <button id="launch-ar-btn" class="control-button bg-green-500 hover:bg-green-600">¡Probar AR!</button>
-                     </div>
-              </div>
-              <div class="bg-white p-6 rounded-lg shadow-md">
-                     <h2 class="text-2xl font-semibold mb-4">Contenido Configurado</h2>
-                     <p class="text-gray-600 mb-4">Este es el contenido que se mostrará en la Realidad Aumentada (si está dentro de las fechas activas).</p>
-                     <div id="summary-poi-list" class="space-y-4">
-                           <p id="loading-summary-pois" class="text-gray-500">Cargando resumen...</p>
-                     </div>
-              </div>
-          </div>
+         <div class="container mx-auto p-6 max-w-4xl">
+             <div class="flex flex-wrap justify-between items-center mb-8 gap-4">
+                   <h1 class="text-3xl font-bold text-purple-700">Resumen de Configuración AR</h1>
+                   <div class="flex gap-2">
+                       <button id="back-to-map-btn" class="control-button bg-gray-500 hover:bg-gray-600">Volver al Mapa</button>
+                       <button id="launch-ar-btn" class="control-button bg-green-500 hover:bg-green-600">¡Probar AR!</button>
+                   </div>
+             </div>
+             <div class="bg-white p-6 rounded-lg shadow-md">
+                   <h2 class="text-2xl font-semibold mb-4">Contenido Configurado</h2>
+                   <p class="text-gray-600 mb-4">Este es el contenido que se mostrará en la Realidad Aumentada (si está dentro de las fechas activas).</p>
+                   <div id="summary-poi-list" class="space-y-4">
+                         <p id="loading-summary-pois" class="text-gray-500">Cargando resumen...</p>
+                   </div>
+             </div>
+         </div>
     </div>
 
     <div id="ar-page" class="page">
@@ -578,7 +585,9 @@
         <div id="ar-controls">
             <button id="back-to-summary-btn" class="control-button bg-gray-500 hover:bg-gray-600">Volver al Resumen</button>
             <button id="save-ar-scale-btn" class="control-button bg-orange-500 hover:bg-orange-600" disabled>Guardar Escala (para POI más cercano)</button>
-         </div>
+            <!-- (NUEVO) Botón de Captura de Pantalla -->
+            <button id="screenshot-btn" class="control-button bg-blue-500 hover:bg-blue-600">Capturar Foto</button>
+        </div>
     </div>
 
     <div id="permission-modal" class="permission-modal">
@@ -590,6 +599,9 @@
     </div>
 
     <div id="message-box"></div>
+
+    <!-- (NUEVO) Canvas temporal para combinar la captura de pantalla -->
+    <canvas id="screenshot-canvas"></canvas>
 
     <script type="module">
         // Import necessary Firebase functions
@@ -615,7 +627,7 @@
 
         // --- App Version ---
         // Increment this with EVERY change.
-        const APP_VERSION = '1.51'; // (FIX) Corregidos atributos de gps-camera (gpsMinDistance, etc.)
+        const APP_VERSION = '1.52'; // (FIX) Corregido parseo de evento GPS y añadido botón de captura.
         const LOCALSTORAGE_KEY = 'arAdminModelSelection'; // Key for local storage
 
         // --- Ecopiensa Models Data ---
@@ -633,7 +645,7 @@
         const CUSTOM_VIDEO_PLACEHOLDER = { name: "Video Personalizado", url: "CUSTOM_VIDEO", isCustomVideo: true, imageUrl: "https://placehold.co/100x100/764ba2/white?text=Video" };
 
         
-        // --- INICIO: Bloque de configuración de Firebase ---
+       // --- INICIO: Bloque de configuración de Firebase ---
 
         // Tal como solicitaste, las claves hardcoded han sido eliminadas.
         // Pega tu configuración de Firebase aquí.
@@ -724,6 +736,8 @@
         let arRealtimeLocationEl, realtimeLatEl, realtimeLonEl;
         // AR Scale Slider Elements
         let arScaleSlider, arScaleValueDisplay, saveArScaleBtn;
+        // (NUEVO) Screenshot elements
+        let screenshotBtn, screenshotCanvas;
 
         // --- DOM Element References (assigned in DOMContentLoaded) ---
         let pages = {};
@@ -762,8 +776,8 @@
             const Δλ = toRad(lon2 - lon1);
 
             const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                      Math.cos(φ1) * Math.cos(φ2) *
-                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+                        Math.cos(φ1) * Math.cos(φ2) *
+                        Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
             return R * c; // Distance in meters
@@ -781,7 +795,7 @@
 
             const y = Math.sin(λ2 - λ1) * Math.cos(φ2);
             const x = Math.cos(φ1) * Math.sin(φ2) -
-                      Math.sin(φ1) * Math.cos(φ2) * Math.cos(λ2 - λ1);
+                        Math.sin(φ1) * Math.cos(φ2) * Math.cos(λ2 - λ1);
 
             let bearing = toDeg(Math.atan2(y, x));
             return (bearing + 360) % 360; // Normalize to 0-360 degrees
@@ -892,7 +906,7 @@
             // Block navigation to protected pages if Firebase isn't ready
             if (pageName !== 'login' && !firebaseReady) {
                  if (['map', 'summary', 'ar'].includes(pageName)) {
-                    showMessage("Aguarde un momento, conectando con la base de datos...", 3000);
+                     showMessage("Aguarde un momento, conectando con la base de datos...", 3000);
                  }
                 console.warn(`Navigation to ${pageName} blocked, Firebase not ready.`);
                 return;
@@ -1019,8 +1033,8 @@
             if (gotoMapButton) gotoMapButton.disabled = true; // Disable map button until ready
 
             // Basic validation of Firebase config
-            if (!firebaseConfig || !firebaseConfig.projectId || !appId) {
-                const errorMsg = "Error fatal: Configuración de Firebase inválida o incompleta.";
+            if (!firebaseConfig || !firebaseConfig.projectId || !appId || appId === 'default-app-id-fallback') {
+                const errorMsg = "Error fatal: Configuración de Firebase inválida o incompleta. Revisa el script.";
                 console.error(errorMsg, firebaseConfig);
                 if(loadingPois) loadingPois.textContent = errorMsg;
                 showMessage(errorMsg, 10000);
@@ -1055,8 +1069,8 @@
                         firebaseReady = true; // Mark Firebase as ready
                         if (gotoMapButton) gotoMapButton.disabled = false; // Enable map button
                         if (loadingPois?.textContent.startsWith("Inicializando")) {
-                            loadingPois.textContent = "Conexión exitosa. Cargando POIs...";
-                         }
+                             loadingPois.textContent = "Conexión exitosa. Cargando POIs...";
+                           }
                         showMessage(`Bienvenido, ${user.displayName || user.email}`, 2000);
 
                         // Start listening for POI data changes
@@ -1064,10 +1078,10 @@
 
                         // Navigate to admin page if user was on login page
                         if (pages.login?.classList.contains('active')) {
-                            navigateTo('admin');
+                             navigateTo('admin');
                         }
 
-                     } else {
+                      } else {
                         // --- User is Signed Out ---
                         userId = null;
                         poiCollectionRef = null;
@@ -1105,18 +1119,18 @@
          */
          async function handleGoogleLogin() {
              const provider = new GoogleAuthProvider();
-            if (!auth) {
-                console.error("Auth service not initialized.");
-                showMessage("Error: Servicio de autenticación no listo.", 3000);
-                return;
-            }
-            try {
-                await signInWithPopup(auth, provider);
-                // onAuthStateChanged will handle navigation and setup
-            } catch (error) {
-                console.error("Google Login Error:", error);
-                showMessage("Error al iniciar sesión: " + (error.message || "Intenta de nuevo."), 5000);
-            }
+             if (!auth) {
+                 console.error("Auth service not initialized.");
+                 showMessage("Error: Servicio de autenticación no listo.", 3000);
+                 return;
+             }
+             try {
+                 await signInWithPopup(auth, provider);
+                 // onAuthStateChanged will handle navigation and setup
+             } catch (error) {
+                 console.error("Google Login Error:", error);
+                 showMessage("Error al iniciar sesión: " + (error.message || "Intenta de nuevo."), 5000);
+             }
          }
 
         /**
@@ -1124,17 +1138,17 @@
          */
          async function handleLogout() {
              if (!auth) {
-                console.error("Auth service not initialized.");
-                return;
+                 console.error("Auth service not initialized.");
+                 return;
              }
-            try {
-                await signOut(auth);
-                showMessage("Sesión cerrada.", 2000);
-                // onAuthStateChanged will handle cleanup and navigation to login
-            } catch (error) {
-                console.error("Logout Error:", error);
-                showMessage("Error al cerrar sesión.", 3000);
-            }
+             try {
+                 await signOut(auth);
+                 showMessage("Sesión cerrada.", 2000);
+                 // onAuthStateChanged will handle cleanup and navigation to login
+             } catch (error) {
+                 console.error("Logout Error:", error);
+                 showMessage("Error al cerrar sesión.", 3000);
+             }
          }
 
         /**
@@ -1158,53 +1172,53 @@
                  return;
              }
 
-            loadingModelsPlaceholder.style.display = 'none'; // Hide loading text
-            ecopiensaSelectionList.innerHTML = ''; // Clear previous checkboxes
+             loadingModelsPlaceholder.style.display = 'none'; // Hide loading text
+             ecopiensaSelectionList.innerHTML = ''; // Clear previous checkboxes
 
-            // Create checkboxes for predefined Ecopiensa models
-            ECOPIENSA_MODELS.forEach(model => {
-                const isSelected = modelsToPlace.some(m => !m.isCustomVideo && m.url === model.modelUrl);
-                createCheckbox(model.name, model.modelUrl, isSelected, false, model.imageUrl);
-            });
+             // Create checkboxes for predefined Ecopiensa models
+             ECOPIENSA_MODELS.forEach(model => {
+                 const isSelected = modelsToPlace.some(m => !m.isCustomVideo && m.url === model.modelUrl);
+                 createCheckbox(model.name, model.modelUrl, isSelected, false, model.imageUrl);
+             });
 
-            // Set up the custom video checkbox
-            selectVideoCheckbox.removeEventListener('change', handleVideoCheckboxChange); // Prevent duplicate listeners
-            selectVideoCheckbox.addEventListener('change', handleVideoCheckboxChange);
-            selectVideoCheckbox.checked = modelsToPlace.some(m => m.isCustomVideo); // Set initial state
+             // Set up the custom video checkbox
+             selectVideoCheckbox.removeEventListener('change', handleVideoCheckboxChange); // Prevent duplicate listeners
+             selectVideoCheckbox.addEventListener('change', handleVideoCheckboxChange);
+             selectVideoCheckbox.checked = modelsToPlace.some(m => m.isCustomVideo); // Set initial state
          }
 
         /**
          * Creates a single checkbox element for the selection list.
          */
         function createCheckbox(name, url, isChecked, isVideoPlaceholder = false, imageUrl = '') {
-             if (!ecopiensaSelectionList) return;
+            if (!ecopiensaSelectionList) return;
 
-             const label = document.createElement('label');
-             label.className = 'flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer transition duration-150 ease-in-out';
-             const input = document.createElement('input');
-             input.type = 'checkbox';
-             input.className = 'model-select-cb h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded';
-             // Store data attributes for easy access in event handler
-             input.dataset.name = name;
-             input.dataset.url = url;
-             input.checked = isChecked;
-             input.dataset.imageUrl = imageUrl;
-             if (isVideoPlaceholder) {
+            const label = document.createElement('label');
+            label.className = 'flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer transition duration-150 ease-in-out';
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.className = 'model-select-cb h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded';
+            // Store data attributes for easy access in event handler
+            input.dataset.name = name;
+            input.dataset.url = url;
+            input.checked = isChecked;
+            input.dataset.imageUrl = imageUrl;
+            if (isVideoPlaceholder) {
                  input.dataset.isCustomVideo = "true";
-             }
+            }
 
-             // Attach change listener
-             input.removeEventListener('change', handleCheckboxChange); // Prevent duplicates
-             input.addEventListener('change', handleCheckboxChange);
+            // Attach change listener
+            input.removeEventListener('change', handleCheckboxChange); // Prevent duplicates
+            input.addEventListener('change', handleCheckboxChange);
 
-             const span = document.createElement('span');
-             span.textContent = name;
-             span.className = 'text-sm font-medium text-gray-700';
+            const span = document.createElement('span');
+            span.textContent = name;
+            span.className = 'text-sm font-medium text-gray-700';
 
-             label.appendChild(input);
-             label.appendChild(span);
-             ecopiensaSelectionList.appendChild(label);
-         }
+            label.appendChild(input);
+            label.appendChild(span);
+            ecopiensaSelectionList.appendChild(label);
+        }
 
         /**
          * Handles changes to the "Custom Video" checkbox.
@@ -1230,27 +1244,27 @@
          * Handles changes to individual model checkboxes.
          */
         function handleCheckboxChange(e) {
-             const itemData = {
+            const itemData = {
                  name: e.target.dataset.name,
                  url: e.target.dataset.url,
                  isCustomVideo: e.target.dataset.isCustomVideo === "true",
                  imageUrl: e.target.dataset.imageUrl || ''
-             };
-             const itemExists = modelsToPlace.some(m => m.url === itemData.url);
+            };
+            const itemExists = modelsToPlace.some(m => m.url === itemData.url);
 
-             if (e.target.checked) {
+            if (e.target.checked) {
                  // Add item if it doesn't exist
                  if (!itemExists) {
                      modelsToPlace.push(itemData);
                  }
-             } else {
+            } else {
                  // Remove item if it exists
                  if (itemExists) {
                      modelsToPlace = modelsToPlace.filter(m => m.url !== itemData.url);
                  }
-             }
-             saveSelectionToLocalStorage(); // Persist changes
-             console.log("Models to place updated:", modelsToPlace);
+            }
+            saveSelectionToLocalStorage(); // Persist changes
+            console.log("Models to place updated:", modelsToPlace);
          }
 
         // --- Firestore Data Handling ---
@@ -1259,36 +1273,36 @@
          * Loads POI data from Firestore and listens for real-time updates.
          */
         function loadAndListenPois() {
-             // Check if Firestore reference is ready
-             if (!poiCollectionRef) {
+            // Check if Firestore reference is ready
+            if (!poiCollectionRef) {
                  console.warn("loadAndListenPois called before poiCollectionRef is set (user might be logged out).");
                  if (loadingPois) loadingPois.textContent = "Esperando inicio de sesión...";
                  return;
-             }
-             // Check if UI elements are ready
-             if (!listContainer || !loadingPois) {
+            }
+            // Check if UI elements are ready
+            if (!listContainer || !loadingPois) {
                  console.error("Admin page POI list elements not found.");
                  return;
-             }
+            }
 
             if (loadingPois) {
                  loadingPois.textContent = "Cargando puntos guardados...";
                  loadingPois.style.display = 'block';
             }
 
-             // Create Firestore query and attach snapshot listener
-             const q = query(poiCollectionRef);
-             onSnapshot(q, (querySnapshot) => {
+            // Create Firestore query and attach snapshot listener
+            const q = query(poiCollectionRef);
+            onSnapshot(q, (querySnapshot) => {
                  console.log("Firestore snapshot received.");
                  if (!listContainer || !loadingPois) return; // Re-check elements
 
-                loadingPois.style.display = 'none'; // Hide loading indicator
+                 loadingPois.style.display = 'none'; // Hide loading indicator
                  // Clear local data caches
                  allPoisData = [];
                  poiDataMap.clear();
                  // Clear admin list UI only if admin page is active
                  if (pages.admin?.classList.contains('active')) {
-                      listContainer.innerHTML = '';
+                     listContainer.innerHTML = '';
                  }
 
                  // Handle empty snapshot
@@ -1309,7 +1323,7 @@
                       const poi = { id: doc.id, ...doc.data() };
                       // Add default arScaleMultiplier if missing
                       if (poi.arScaleMultiplier === undefined) {
-                          poi.arScaleMultiplier = 1.0;
+                           poi.arScaleMultiplier = 1.0;
                       }
                       allPoisData.push(poi);
                       poiDataMap.set(poi.id, poi); // Add to Map for quick lookup
@@ -1323,24 +1337,24 @@
                            if (urlToShow.length > 30) urlToShow = urlToShow.substring(0, 27) + '...'; // Truncate long URLs
 
                            poiElement.innerHTML = `
-                               <div>
-                                   <strong class="block text-sm text-gray-800">${poi.name || 'Sin Nombre'}</strong>
-                                   <span class="block text-xs ${poi.poiType === 'video' ? 'text-purple-600' : 'text-blue-600'}">${typeLabel}</span>
-                                   <span class="block text-xs text-gray-500" title="${poi.poiType === 'video' ? poi.videoUrl : poi.modelUrl}">URL: ${urlToShow}</span>
-                               </div>
-                               <div class="text-sm">
-                                   <span class="block">Lat: ${poi.lat?.toFixed(6) || 'N/A'}</span>
-                                   <span class="block">Lon: ${poi.lon?.toFixed(6) || 'N/A'}</span>
-                               </div>
-                               <div class="text-sm">
-                                   <span class="block">Inicio: ${poi.startDate || 'N/A'}</span>
-                                   <span class="block">Fin: ${poi.endDate || 'N/A'}</span>
-                               </div>
-                               <div class="text-right">
-                                   <button data-id="${poi.id}" class="delete-btn bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-300">
-                                       Eliminar
-                                   </button>
-                               </div>
+                                <div>
+                                    <strong class="block text-sm text-gray-800">${poi.name || 'Sin Nombre'}</strong>
+                                    <span class="block text-xs ${poi.poiType === 'video' ? 'text-purple-600' : 'text-blue-600'}">${typeLabel}</span>
+                                    <span class="block text-xs text-gray-500" title="${poi.poiType === 'video' ? poi.videoUrl : poi.modelUrl}">URL: ${urlToShow}</span>
+                                </div>
+                                <div class="text-sm">
+                                    <span class="block">Lat: ${poi.lat?.toFixed(6) || 'N/A'}</span>
+                                    <span class="block">Lon: ${poi.lon?.toFixed(6) || 'N/A'}</span>
+                                </div>
+                                <div class="text-sm">
+                                    <span class="block">Inicio: ${poi.startDate || 'N/A'}</span>
+                                    <span class="block">Fin: ${poi.endDate || 'N/A'}</span>
+                                </div>
+                                <div class="text-right">
+                                    <button data-id="${poi.id}" class="delete-btn bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-300">
+                                        Eliminar
+                                    </button>
+                                </div>
                            `;
                            listContainer.appendChild(poiElement);
                       }
@@ -1350,17 +1364,17 @@
 
                  // Update map if it's currently active
                  if (map && pages.map?.classList.contains('active')) {
-                     updateMapMarkersAndPlacedList();
-                     populatePlacementPanel(); // Refresh available models panel
-                     if (togglePoisBtn) togglePoisBtn.style.display = 'block'; // Ensure toggle button is visible
+                      updateMapMarkersAndPlacedList();
+                      populatePlacementPanel(); // Refresh available models panel
+                      if (togglePoisBtn) togglePoisBtn.style.display = 'block'; // Ensure toggle button is visible
                  }
 
                  // Update summary page if it's currently active
                  if (pages.summary?.classList.contains('active')) {
-                     populateSummaryPage();
+                      populateSummaryPage();
                  }
 
-             }, (error) => {
+            }, (error) => {
                  // Handle Firestore errors
                  console.error("Error listening to POIs (Firestore):", error);
                  if (loadingPois) loadingPois.style.display = 'none';
@@ -1369,7 +1383,7 @@
                  allPoisData = [];
                  poiDataMap.clear();
                  showMessage("Error al actualizar la lista de contenido.", 5000);
-             });
+            });
          }
 
         // --- Map Page Logic (Leaflet) ---
@@ -1378,85 +1392,85 @@
          * Initializes the Leaflet map and its associated controls and listeners.
          */
         function initMap() {
-             console.log("Initializing Map...");
-             // Ensure Firebase is ready before initializing map
-             if (!firebaseReady || !poiCollectionRef) {
+            console.log("Initializing Map...");
+            // Ensure Firebase is ready before initializing map
+            if (!firebaseReady || !poiCollectionRef) {
                  showMessage("La base de datos no está lista. Por favor espere...", 3000);
                  navigateTo('login'); // Redirect to login if Firebase isn't ready
                  return;
-             }
-             // If map already exists, just refresh its size and content
-             if (map) {
+            }
+            // If map already exists, just refresh its size and content
+            if (map) {
                  console.log("Map already exists. Invalidating size.");
                  setTimeout(() => { if (map) map.invalidateSize(); }, 100); // Invalidate size after slight delay
-                  populatePlacementPanel(); // Refresh models available for placement
-                  updateMapMarkersAndPlacedList(); // Refresh markers and list
-                  return;
-             }
+                 populatePlacementPanel(); // Refresh models available for placement
+                 updateMapMarkersAndPlacedList(); // Refresh markers and list
+                 return;
+            }
 
-             const mapContainer = document.getElementById('map-canvas');
-             if (!mapContainer) { console.error("Map container element (#map-canvas) not found."); return; }
-             // Default center coordinates (Tuluá)
-             const defaultCenter = [4.0835, -76.1915];
-             // Initialize Leaflet map
-             map = L.map(mapContainer, { zoomControl: false, preferCanvas: true }).setView(defaultCenter, 15);
+            const mapContainer = document.getElementById('map-canvas');
+            if (!mapContainer) { console.error("Map container element (#map-canvas) not found."); return; }
+            // Default center coordinates (Tuluá)
+            const defaultCenter = [4.0835, -76.1915];
+            // Initialize Leaflet map
+            map = L.map(mapContainer, { zoomControl: false, preferCanvas: true }).setView(defaultCenter, 15);
 
-             // Add Google Satellite tile layer
-             L.tileLayer('https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+            // Add Google Satellite tile layer
+            L.tileLayer('https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
                  maxZoom: 22, // High max zoom for detail
                  subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], // Google subdomains
                  attribution: 'Imagery &copy;2025 Google'
-             }).addTo(map);
+            }).addTo(map);
 
-             // Initial population of map content
-             updateMapMarkersAndPlacedList();
-             populatePlacementPanel();
-             cancelPlacement(); // Ensure placement form is hidden
-             cancelEditLocation(); // Ensure edit form is hidden
+            // Initial population of map content
+            updateMapMarkersAndPlacedList();
+            populatePlacementPanel();
+            cancelPlacement(); // Ensure placement form is hidden
+            cancelEditLocation(); // Ensure edit form is hidden
 
-             // Attach map event listeners
-             map.off('move', updateCenterCoordsDisplay); // Remove previous listener if any
-             map.on('move', updateCenterCoordsDisplay); // Update coords display on move
-             updateCenterCoordsDisplay(); // Initial coords display
+            // Attach map event listeners
+            map.off('move', updateCenterCoordsDisplay); // Remove previous listener if any
+            map.on('move', updateCenterCoordsDisplay); // Update coords display on move
+            updateCenterCoordsDisplay(); // Initial coords display
 
-             // Connect map zoom slider
-             if (mapZoomSlider) {
+            // Connect map zoom slider
+            if (mapZoomSlider) {
                  mapZoomSlider.value = map.getZoom();
                  mapZoomSlider.removeEventListener('input', handleZoomSlider);
                  mapZoomSlider.addEventListener('input', handleZoomSlider);
-             }
-             map.off('zoomend', handleMapZoomEnd);
-             map.on('zoomend', handleMapZoomEnd); // Update slider when map zoom changes
+            }
+            map.off('zoomend', handleMapZoomEnd);
+            map.on('zoomend', handleMapZoomEnd); // Update slider when map zoom changes
 
-             // Connect "Jump To" button
-             if (jumptoBtn) {
+            // Connect "Jump To" button
+            if (jumptoBtn) {
                  jumptoBtn.removeEventListener('click', jumpToCoords);
                  jumptoBtn.addEventListener('click', jumpToCoords);
-             }
+            }
 
-             // Connect POI Type dropdown
-             if (placePoiTypeSelect) {
+            // Connect POI Type dropdown
+            if (placePoiTypeSelect) {
                  placePoiTypeSelect.removeEventListener('change', handlePoiTypeChange);
                  placePoiTypeSelect.addEventListener('change', handlePoiTypeChange);
                  handlePoiTypeChange(); // Initial setup based on default value
-              }
-
-             // Attach delete listener to the placed POIs list container
-             if (placedPoisList) {
-                 placedPoisList.removeEventListener('click', handleDeletePoiOnMap);
-                 placedPoisList.addEventListener('click', handleDeletePoiOnMap);
              }
 
-             // Attach listener for toggling the placed POIs panel
-             if (togglePoisBtn) {
+            // Attach delete listener to the placed POIs list container
+            if (placedPoisList) {
+                 placedPoisList.removeEventListener('click', handleDeletePoiOnMap);
+                 placedPoisList.addEventListener('click', handleDeletePoiOnMap);
+            }
+
+            // Attach listener for toggling the placed POIs panel
+            if (togglePoisBtn) {
                  togglePoisBtn.removeEventListener('click', handleTogglePoisPanel);
                  togglePoisBtn.addEventListener('click', handleTogglePoisPanel);
                  togglePoisBtn.style.display = 'block'; // Ensure visibility
-             }
+            }
 
-             // Invalidate map size after a short delay to ensure correct rendering
-             setTimeout(() => { if (map) map.invalidateSize(); }, 200);
-             console.log("Map initialization complete.");
+            // Invalidate map size after a short delay to ensure correct rendering
+            setTimeout(() => { if (map) map.invalidateSize(); }, 200);
+            console.log("Map initialization complete.");
          }
 
         /**
@@ -1473,14 +1487,14 @@
          * Updates the display showing the current center coordinates of the map.
          */
          function updateCenterCoordsDisplay() {
-              if (map && mapCenterCoordsEl) {
-                  const center = map.getCenter();
-                  mapCenterCoordsEl.innerHTML = `
-                        <span>Lat: ${center.lat.toFixed(6)}</span>
-                        <span>Lon: ${center.lng.toFixed(6)}</span>
-                  `;
-              }
-          }
+             if (map && mapCenterCoordsEl) {
+                 const center = map.getCenter();
+                 mapCenterCoordsEl.innerHTML = `
+                     <span>Lat: ${center.lat.toFixed(6)}</span>
+                     <span>Lon: ${center.lng.toFixed(6)}</span>
+                 `;
+             }
+         }
 
         /**
          * Updates the markers on the map and the list in the placed POIs panel
@@ -1580,7 +1594,7 @@
 
              // Show/hide relevant form sections
              modelFieldsDiv.classList.toggle('hidden', isVideo);
-             videoFieldsDiv.classList.toggle('hidden', isVideo);
+             videoFieldsDiv.classList.toggle('hidden', !isVideo);
 
              // Enable/disable URL inputs
              placeModelUrlInput.disabled = isVideo;
@@ -1611,9 +1625,9 @@
                  showMessage("Error: No se pudieron encontrar los datos o el marcador del POI.", 4000); return;
              }
 
-            isEditingLocation = true; // Set editing flag
-            currentEditingPoiId = poiId; // Store ID of POI being edited
-            currentEditingMarker = marker; // Store marker reference
+             isEditingLocation = true; // Set editing flag
+             currentEditingPoiId = poiId; // Store ID of POI being edited
+             currentEditingMarker = marker; // Store marker reference
 
              // Update UI for editing mode
              if (editingPoiNameEl) editingPoiNameEl.textContent = `Moviendo: ${poiData.name || 'Sin Nombre'}`;
@@ -1763,23 +1777,23 @@
              console.log("Starting placement for:", itemData);
              const isCustomVideo = itemData.isCustomVideo === true;
 
-            isPlacingModel = true; // Set placement flag
-            currentPlacingModel = { ...itemData }; // Store data of the item being placed
+             isPlacingModel = true; // Set placement flag
+             currentPlacingModel = { ...itemData }; // Store data of the item being placed
 
              // Update form header and preview image
              if (placingModelName) placingModelName.textContent = `Posicionando: ${currentPlacingModel.name}`;
              if (placementPreviewImageEl) {
                  if (itemData.imageUrl) {
-                      placementPreviewImageEl.src = itemData.imageUrl;
-                      placementPreviewImageEl.style.display = 'block';
-                      // Add error handler for broken image links
-                      placementPreviewImageEl.onerror = () => {
+                     placementPreviewImageEl.src = itemData.imageUrl;
+                     placementPreviewImageEl.style.display = 'block';
+                     // Add error handler for broken image links
+                     placementPreviewImageEl.onerror = () => {
                          console.warn("Could not load preview image:", itemData.imageUrl);
                          placementPreviewImageEl.style.display = 'none';
                          placementPreviewImageEl.onerror = null; // Prevent infinite loop
-                      };
+                     };
                  } else {
-                      placementPreviewImageEl.style.display = 'none'; // Hide if no image URL
+                     placementPreviewImageEl.style.display = 'none'; // Hide if no image URL
                  }
               }
 
@@ -2017,7 +2031,7 @@
                  const isModel = poi.poiType === 'model';
                  // Parse start/end dates (handle invalid/missing dates)
                  const startDate = poi.startDate ? new Date(poi.startDate + "T00:00:00Z") : null; // Assume UTC midnight start
-                 const endDate = poi.endDate ? new Date(poi.endDate + "T23:59:59Z") : null;      // Assume UTC end of day
+                 const endDate = poi.endDate ? new Date(poi.endDate + "T23:59:59Z") : null;     // Assume UTC end of day
 
                  // Determine if the POI is currently active based on dates
                  let isActive = false;
@@ -2133,8 +2147,8 @@
                         },
                         {
                             enableHighAccuracy: true, // Request high accuracy
-                            timeout: 60000,         // 60-second timeout
-                            maximumAge: 0           // Force fresh reading
+                            timeout: 60000,       // 60-second timeout
+                            maximumAge: 0         // Force fresh reading
                         }
                     );
                 });
@@ -2154,7 +2168,7 @@
                 let msg = err.message || "Error de permisos AR. Inténtalo de nuevo.";
                 // Provide specific message if denied
                  if (err.message.includes("denied")) {
-                     msg = "Acceso a cámara o ubicación denegado. Habilítalos en la configuración del navegador.";
+                      msg = "Acceso a cámara o ubicación denegado. Habilítalos en la configuración del navegador.";
                  }
                 showMessage(msg, 6000);
                 return; // Stop AR flow
@@ -2240,88 +2254,88 @@
                      return reject(new Error('A-Assets element not found.'));
                  }
 
-                let loadedCount = 0;
-                const assetLoadTimeout = 90000; // 90 seconds timeout for all assets
+                 let loadedCount = 0;
+                 const assetLoadTimeout = 90000; // 90 seconds timeout for all assets
 
-                // Listener for individual asset loading success
-                const itemLoadedListener = (e) => {
-                    const assetId = e.detail?.id || e.detail?.item?.id || 'unknown asset';
-                    console.log(`Asset loaded: ${assetId}`);
-                    loadedCount++;
-                    updateARProgressBar('asset_loaded', assetId);
+                 // Listener for individual asset loading success
+                 const itemLoadedListener = (e) => {
+                     const assetId = e.detail?.id || e.detail?.item?.id || 'unknown asset';
+                     console.log(`Asset loaded: ${assetId}`);
+                     loadedCount++;
+                     updateARProgressBar('asset_loaded', assetId);
 
-                    if (loadedCount === totalARAssetsToLoad) {
+                     if (loadedCount === totalARAssetsToLoad) {
                          cleanupListeners();
                          resolve(); // All assets loaded
-                    }
-                };
+                     }
+                 };
 
-                // Listener for individual asset loading error
-                const itemErrorListener = (e) => {
-                    const assetId = e.detail?.id || e.detail?.item?.id || 'unknown asset';
-                    const errorSrc = e.detail?.src || e.detail?.item?.src || 'unknown source';
-                    console.error(`Error loading asset: ${assetId} from ${errorSrc}`, e.detail);
-                    // Optionally, count error as "loaded" to prevent blocking, or reject
-                    loadedCount++; // Count error to potentially continue
-                    updateARProgressBar('asset_loaded', `${assetId} (Error)`);
-                    showMessage(`Error cargando ${assetId}. Puede que no se muestre.`, 4000);
-                    if (loadedCount === totalARAssetsToLoad) {
+                 // Listener for individual asset loading error
+                 const itemErrorListener = (e) => {
+                     const assetId = e.detail?.id || e.detail?.item?.id || 'unknown asset';
+                     const errorSrc = e.detail?.src || e.detail?.item?.src || 'unknown source';
+                     console.error(`Error loading asset: ${assetId} from ${errorSrc}`, e.detail);
+                     // Optionally, count error as "loaded" to prevent blocking, or reject
+                     loadedCount++; // Count error to potentially continue
+                     updateARProgressBar('asset_loaded', `${assetId} (Error)`);
+                     showMessage(`Error cargando ${assetId}. Puede que no se muestre.`, 4000);
+                     if (loadedCount === totalARAssetsToLoad) {
                          cleanupListeners();
                          resolve(); // Resolve even with errors for now
                          // reject(new Error(`Failed to load asset: ${assetId}`)); // Alternative: Fail completely
-                    }
-                };
+                     }
+                 };
 
-                // Listener for overall assets timeout
-                const assetsTimeoutListener = () => {
-                    console.error("Timeout loading assets in <a-assets>.");
-                    cleanupListeners();
-                    reject(new Error(`Timeout (${assetLoadTimeout/1000}s) waiting for AR assets to load.`));
-                };
+                 // Listener for overall assets timeout
+                 const assetsTimeoutListener = () => {
+                     console.error("Timeout loading assets in <a-assets>.");
+                     cleanupListeners();
+                     reject(new Error(`Timeout (${assetLoadTimeout/1000}s) waiting for AR assets to load.`));
+                 };
 
-                // Listener for when A-Frame considers all assets loaded (fallback)
-                const assetsLoadedListener = () => {
-                    console.log("A-Frame reported <a-assets> loaded.");
-                    // If our counter didn't reach the total, log warning but resolve anyway
-                    if (loadedCount < totalARAssetsToLoad) {
-                        console.warn(`A-Frame loaded event fired, but only ${loadedCount}/${totalARAssetsToLoad} assets were tracked individually.`);
-                        // Force update progress bar to near complete if needed
-                        while(loadedCount < totalARAssetsToLoad){
-                            loadedCount++;
-                            updateARProgressBar('asset_loaded', 'Forzado por evento LOADED');
-                        }
-                    }
-                    cleanupListeners();
-                    resolve();
-                };
+                 // Listener for when A-Frame considers all assets loaded (fallback)
+                 const assetsLoadedListener = () => {
+                     console.log("A-Frame reported <a-assets> loaded.");
+                     // If our counter didn't reach the total, log warning but resolve anyway
+                     if (loadedCount < totalARAssetsToLoad) {
+                         console.warn(`A-Frame loaded event fired, but only ${loadedCount}/${totalARAssetsToLoad} assets were tracked individually.`);
+                         // Force update progress bar to near complete if needed
+                         while(loadedCount < totalARAssetsToLoad){
+                             loadedCount++;
+                             updateARProgressBar('asset_loaded', 'Forzado por evento LOADED');
+                         }
+                     }
+                     cleanupListeners();
+                     resolve();
+                 };
 
-                // Cleanup function to remove listeners
-                const cleanupListeners = () => {
-                    assetsEl.removeEventListener('loaded', assetsLoadedListener);
-                    assetsEl.removeEventListener('timeout', assetsTimeoutListener);
-                    // A-Frame has different event names for items, listen to both common ones
-                    assetsEl.removeEventListener('asset-item-loaded', itemLoadedListener); // Older?
-                    assetsEl.removeEventListener('child-loaded', itemLoadedListener);      // Newer?
-                    assetsEl.removeEventListener('asset-item-error', itemErrorListener);  // Error events
-                    assetsEl.removeEventListener('child-error', itemErrorListener);        // Error events
-                    clearTimeout(overallTimeoutId);
-                };
+                 // Cleanup function to remove listeners
+                 const cleanupListeners = () => {
+                     assetsEl.removeEventListener('loaded', assetsLoadedListener);
+                     assetsEl.removeEventListener('timeout', assetsTimeoutListener);
+                     // A-Frame has different event names for items, listen to both common ones
+                     assetsEl.removeEventListener('asset-item-loaded', itemLoadedListener); // Older?
+                     assetsEl.removeEventListener('child-loaded', itemLoadedListener);     // Newer?
+                     assetsEl.removeEventListener('asset-item-error', itemErrorListener);  // Error events
+                     assetsEl.removeEventListener('child-error', itemErrorListener);       // Error events
+                     clearTimeout(overallTimeoutId);
+                 };
 
-                // Attach listeners
-                assetsEl.addEventListener('loaded', assetsLoadedListener);
-                assetsEl.addEventListener('timeout', assetsTimeoutListener);
-                assetsEl.addEventListener('asset-item-loaded', itemLoadedListener);
-                assetsEl.addEventListener('child-loaded', itemLoadedListener);
-                assetsEl.addEventListener('asset-item-error', itemErrorListener);
-                assetsEl.addEventListener('child-error', itemErrorListener);
+                 // Attach listeners
+                 assetsEl.addEventListener('loaded', assetsLoadedListener);
+                 assetsEl.addEventListener('timeout', assetsTimeoutListener);
+                 assetsEl.addEventListener('asset-item-loaded', itemLoadedListener);
+                 assetsEl.addEventListener('child-loaded', itemLoadedListener);
+                 assetsEl.addEventListener('asset-item-error', itemErrorListener);
+                 assetsEl.addEventListener('child-error', itemErrorListener);
 
-                // Set an overall timeout as a safety net
-                const overallTimeoutId = setTimeout(() => {
-                    if (loadedCount < totalARAssetsToLoad) {
-                        assetsTimeoutListener(); // Trigger timeout logic if not all loaded
-                    }
-                }, assetLoadTimeout);
-            });
+                 // Set an overall timeout as a safety net
+                 const overallTimeoutId = setTimeout(() => {
+                     if (loadedCount < totalARAssetsToLoad) {
+                         assetsTimeoutListener(); // Trigger timeout logic if not all loaded
+                     }
+                 }, assetLoadTimeout);
+             });
         }
 
 
@@ -2340,13 +2354,10 @@
             // (SOLUCIÓN GPS 1/1)
             // MODIFICADO: Se eliminaron 'simulateLatitude' y 'simulateLongitude'
             // para forzar el uso del GPS real del dispositivo.
-            
-            // ===================================================================
-            // INICIO DE LA CORRECCIÓN GPS
-            // ===================================================================
-            // Los atributos 'minDistance', 'maxDistance' y 'positionMinAccuracy'
-            // deben tener el prefijo 'gps' para que el componente gps-camera
-            // de AR.js los reconozca.
+            //
+            // (MEJORA) Atributos de gps-camera actualizados
+            // Se usa 'gpsTimeInterval' (actualización más frecuente)
+            // Se usa 'gpsMinAccuracy' (permite precisiones menos ideales para que funcione)
             const sceneHTML = `
                 <a-scene
                     id="ar-scene"
@@ -2372,9 +2383,6 @@
 
                 </a-scene>
             `;
-            // ===================================================================
-            // FIN DE LA CORRECCIÓN GPS
-            // ===================================================================
 
             try {
                 // Inject the scene HTML
@@ -2751,15 +2759,19 @@
          * Updates global GPS state and UI elements.
          */
         function onGPSUpdate(event) {
-             // Ignore events if AR page is not active (prevents updates after navigating away)
-             if (!pages.ar?.classList.contains('active') || !arScene) return;
+            // Ignore events if AR page is not active (prevents updates after navigating away)
+            if (!pages.ar?.classList.contains('active') || !arScene) return;
 
-             const pos = event.detail.position.coords; // Get coords object
-             if (!pos) {
-                 console.warn("GPS update event missing position data.");
-                 return;
-             }
-             const accuracy = pos.accuracy?.toFixed(2) ?? '??'; // Handle potentially missing accuracy
+            // (CORRECCIÓN GPS)
+            // La estructura del evento puede ser event.detail.coords O event.detail.position.coords
+            // Se comprueban ambas para mayor robustez.
+            const pos = event.detail.coords || event.detail.position?.coords;
+            
+            if (!pos) {
+                console.warn("GPS update event missing position data.", event.detail);
+                return;
+            }
+            const accuracy = pos.accuracy?.toFixed(2) ?? '??'; // Handle potentially missing accuracy
 
             // Update global GPS state
             lastKnownGps = {
@@ -2799,10 +2811,10 @@
          * Updates UI to show GPS error state.
          */
         function onGPSError(event) {
-             // Ignore events if AR page is not active
-             if (!pages.ar?.classList.contains('active') || !arScene) return;
+            // Ignore events if AR page is not active
+            if (!pages.ar?.classList.contains('active') || !arScene) return;
 
-             console.error("GPS Error (from A-Frame gps-camera):", event.detail);
+            console.error("GPS Error (from A-Frame gps-camera):", event.detail);
             // Update GPS info panel UI
             const gpsStatusEl = document.getElementById('gps-status');
             if (gpsStatusEl) gpsStatusEl.textContent = "Error";
@@ -2833,6 +2845,55 @@
              if (saveArScaleBtn) saveArScaleBtn.disabled = true;
         }
 
+        /**
+         * (NUEVO) Captura una imagen combinada del video AR y la escena A-Frame.
+         */
+        function handleScreenshot() {
+            if (!arScene || !screenshotCanvas) {
+                showMessage("Error: No se puede tomar la captura.", 2000);
+                return;
+            }
+
+            const video = document.querySelector('.arjs-video');
+            const aframeCanvas = arScene.canvas; // El canvas de A-Frame
+
+            if (!video || !aframeCanvas) {
+                showMessage("Error: No se encontraron los elementos de video o canvas.", 2000);
+                return;
+            }
+
+            const ctx = screenshotCanvas.getContext('2d');
+            
+            // Establecer el tamaño del canvas temporal al tamaño del video
+            const w = video.videoWidth;
+            const h = video.videoHeight;
+            screenshotCanvas.width = w;
+            screenshotCanvas.height = h;
+
+            try {
+                // 1. Dibujar el fotograma del video
+                ctx.drawImage(video, 0, 0, w, h);
+                
+                // 2. Dibujar el canvas de A-Frame (que es transparente) encima
+                ctx.drawImage(aframeCanvas, 0, 0, w, h);
+
+                // 3. Obtener la imagen como Data URL
+                const imageDataUrl = screenshotCanvas.toDataURL('image/jpeg', 0.9); // 90% de calidad
+
+                // 4. Crear un enlace y simular un clic para descargar
+                const link = document.createElement('a');
+                const timestamp = new Date().toISOString().replace(/:/g, '-').slice(0, 19);
+                link.download = `Captura-AR-${timestamp}.jpg`;
+                link.href = imageDataUrl;
+                link.click();
+                showMessage("Captura guardada!", 2000);
+
+            } catch (error) {
+                console.error("Error al crear la captura de pantalla:", error);
+                showMessage("Error al tomar la foto. Revisa la consola.", 3000);
+            }
+        }
+
         // --- Navigation Event Handlers ---
         function setupNavigationListeners() {
             document.getElementById('goto-map-btn')?.addEventListener('click', () => navigateTo('map'));
@@ -2841,6 +2902,10 @@
             document.getElementById('back-to-map-btn')?.addEventListener('click', () => navigateTo('map'));
             document.getElementById('launch-ar-btn')?.addEventListener('click', () => navigateTo('ar'));
             document.getElementById('back-to-summary-btn')?.addEventListener('click', () => navigateTo('summary')); // AR back button
+            
+            // (NUEVO) Listener para el botón de captura
+            document.getElementById('screenshot-btn')?.addEventListener('click', handleScreenshot);
+            
             // Grant permissions button in modal
             document.getElementById('grant-permissions-btn')?.addEventListener('click', () => {
                 if (permissionModal) permissionModal.style.display = 'none';
@@ -2922,6 +2987,10 @@
             loadingSummaryPois = document.getElementById('loading-summary-pois');
             mapCenterCoordsEl = document.getElementById('map-center-coords');
             placementPreviewImageEl = document.getElementById('placement-preview-image');
+            
+            // (NUEVO) Ref para el canvas de captura
+            screenshotCanvas = document.getElementById('screenshot-canvas');
+
             console.log("DOM element references obtained.");
 
             // Initial setup steps
@@ -3004,13 +3073,13 @@
             }
             console.log("Form and List listeners attached.");
 
+            // (CORRECCIÓN) Asegurarse de que esta llamada esté presente
             // Initialize Firebase connection last
             initializeFirebase();
         });
     </script>
 </body>
 </html>
-
 
 
 
