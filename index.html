@@ -627,7 +627,7 @@
 
         // --- App Version ---
         // Increment this with EVERY change.
-        const APP_VERSION = '1.52'; // (FIX) Corregido parseo de evento GPS y añadido botón de captura.
+        const APP_VERSION = '1.53'; // (FIX) Corregido GPS: event listeners en window, configuración AR.js y gps-camera.
         const LOCALSTORAGE_KEY = 'arAdminModelSelection'; // Key for local storage
 
         // --- Ecopiensa Models Data ---
@@ -2365,20 +2365,16 @@
                     vr-mode-ui="enabled: false"
                     renderer="logarithmicDepthBuffer: true; antialias: true; precision: high; alpha: true;"
                     style="background: transparent;"
-                    arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;">
+                    arjs="sourceType: webcam; videoTexture: true; sourceWidth: 640; sourceHeight: 480; displayWidth: 640; displayHeight: 480; debugUIEnabled: false;">
 
                     <a-assets timeout="60000"></a-assets>
 
                     <a-camera
                         id="ar-camera"
-                        gps-camera="
-                            gpsMinDistance: 1;
-                            gpsMaxDistance: 1000;
-                            gpsTimeInterval: 3000;
-                            gpsMinAccuracy: 100;
-                        "
-                        look-controls="enabled: false"
-                        rotation-reader>
+                        gps-camera="gpsMinDistance: 5; gpsTimeInterval: 1000;" 
+                        rotation-reader
+                        camera="active: true; near: 0.1; far: 10000;"
+                        look-controls="enabled: false">
                     </a-camera>
 
                 </a-scene>
@@ -2504,18 +2500,12 @@
                 directionalLight.setAttribute('position', '-1 1 0.5'); // Adjust light direction
                 arScene.appendChild(directionalLight);
 
-                // Attach GPS event listeners to the camera
-                const camera = arScene.querySelector('a-camera');
-                if (camera) {
-                    console.log("Attaching GPS event listeners to A-Frame camera...");
-                    camera.removeEventListener('gps-camera-update-position', onGPSUpdate); // Remove old listeners first
-                    camera.removeEventListener('gps-camera-error', onGPSError);
-                    camera.addEventListener('gps-camera-update-position', onGPSUpdate);
-                    camera.addEventListener('gps-camera-error', onGPSError);
-                } else {
-                    console.error("Could not find A-Frame camera to attach listeners.");
-                    throw new Error("A-Frame camera not found."); // Make it a fatal error for scene init
-                }
+                // Attach GPS event listeners to the window (CORRECCIÓN GPS)
+                console.log("Attaching GPS event listeners to window...");
+                window.removeEventListener('gps-camera-update-position', onGPSUpdate); // Remove old listeners first
+                window.removeEventListener('gps-camera-error', onGPSError);
+                window.addEventListener('gps-camera-update-position', onGPSUpdate);
+                window.addEventListener('gps-camera-error', onGPSError);
 
                 console.log("AR scene structure created with POIs and listeners.");
                 return Promise.resolve(); // Indicate successful scene initialization
@@ -2617,15 +2607,10 @@
         function stopAR() {
             if (arScene) {
                 try {
-                    // Remove GPS listeners from camera FIRST
-                    const camera = arScene.querySelector('a-camera');
-                    if (camera) {
-                         console.log("Removing GPS event listeners from A-Frame camera...");
-                        camera.removeEventListener('gps-camera-update-position', onGPSUpdate);
-                        camera.removeEventListener('gps-camera-error', onGPSError);
-                    } else {
-                         console.warn("Could not find camera to remove listeners during stopAR.");
-                    }
+                    // Remove GPS listeners from window FIRST (CORRECCIÓN GPS)
+                    console.log("Removing GPS event listeners from window...");
+                    window.removeEventListener('gps-camera-update-position', onGPSUpdate);
+                    window.removeEventListener('gps-camera-error', onGPSError);
 
                     arScene.pause(); // Pause A-Frame processing
 
@@ -3080,6 +3065,7 @@
     </script>
 </body>
 </html>
+
 
 
 
